@@ -144,6 +144,7 @@ dependencies:
     - docplex==2.22.213
     - googlemaps==4.6.0
     - idna==3.3
+    - ortools==9.2.9972
     - requests==2.27.1
     - urllib3==1.26.8
 prefix: /home/luca/Coding/EPFL/CS-498_SemProj/env
