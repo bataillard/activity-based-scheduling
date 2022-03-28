@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from utils import hours_to_time_step, discretize_dict
+from utils import hours_to_time_step, discretize_dict, piecewise
 from ast import literal_eval
 
 
@@ -138,9 +138,14 @@ def extract_error_terms(deterministic: bool, parameters: Optional[pd.DataFrame] 
         error_d = parameters['error_d']
         error_z = parameters['error_z']
 
-    EV_error = 0 if deterministic else np.random.gumbel()
+    error_w = piecewise(0, [(k, error_w[k]) for k in [0, 1]], 0)
+    error_x = piecewise(0, [(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))], 0)
+    error_d = piecewise(0, [(a, error_d[b]) for a, b in zip([0, 1, 3, 8, 12, 16], np.arange(6))], error_d[-1])
+    error_z = piecewise(0, [(k, error_z[k]) for k in [0, 1]], 0)
 
-    return error_w, error_x, error_d, error_z, EV_error
+    ev_error = 0 if deterministic else np.random.gumbel()
+
+    return error_w, error_x, error_d, error_z, ev_error
 
 
 def extract_times(activities: pd.DataFrame, parameters: Optional[pd.DataFrame] = None):
