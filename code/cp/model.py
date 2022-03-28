@@ -1,13 +1,11 @@
+import pickle
+
 import pandas as pd
-import numpy as np
 from ortools.sat.python import cp_model
-from dataclasses import dataclass
+
 from parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, extract_activities, \
     prepare_data
-
-MAX_MINUTES = 24 * 60
-TIME_PERIOD = 5
-MAX_TIME = MAX_MINUTES / TIME_PERIOD
+from utils import MAX_TIME
 
 
 def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, deterministic=False):
@@ -46,7 +44,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # ==========================================
 
     # 11. Durations and travel times sum to time budget
-    model.Add(MAX_TIME == sum(d[a] + z[(a, b)] * travel_times[mode[a]][a][b]
+    model.Add(MAX_TIME == sum(d[a] + z[(a, b)] * travel_times[mode[a]][location[a]][location[b]]
                               for a in activities for b in activities))
 
     # 12. Dusk and dawn are mandatory
@@ -56,10 +54,10 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     for a in activities:
         # 13. Activity lasts longer than minimum duration
         # TODO make sure this is actually correct (what is minimum duration?)
-        model.AddImplication(w[a], 0 <= d[a])
+        model.Add(0 <= d[a]).OnlyEnforceIf(w[a])
 
         # 14. Activity lasts less than whole day
-        model.AddImplication(w[a], d[a] <= MAX_TIME)
+        model.Add(d[a] <= MAX_TIME).OnlyEnforceIf(w[a])
 
         # 15. Activities can only follow each other once
         for b in activities:
@@ -80,7 +78,8 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
         # 19. Activities that follow each other much have matching respective end and start times
         for b in activities:
             if a != b:
-                model.AddImplication(z[(a, b)], x[a] + d[a] + travel_times[mode[a]][location[a]][location[b]] == x[b])
+                model.Add(x[a] + d[a] + travel_times[mode[a]][location[a]][location[b]] == x[b]) \
+                    .OnlyEnforceIf(z[(a, b)])
 
         # 21. Only a single duplicate activity is selected
         model.Add(sum(w[b] for b in activities if group[b] == group[a]) <= 1)
@@ -95,16 +94,28 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # = Objective function                     =
     # ==========================================
 
+    start_time_early = {a: model.NewIntVar(0, MAX_TIME, f'desired_start_{a} - x_{a}') for a in activities}
+    start_time_late = {a: model.NewIntVar(0, MAX_TIME, f'x_{a} - desired_time_{a}') for a in activities}
+    duration_short = {a: model.NewIntVar(0, MAX_TIME, f'des_duration_{a} - d_{a}]') for a in activities}
+    duration_long = {a: model.NewIntVar(0, MAX_TIME, f'd_{a} - des_duration_{a}') for a in activities}
+
+    for a in activities:
+        model.AddMaxEquality(start_time_early[a], [des_start[a] - x[a], 0])
+        model.AddMaxEquality(start_time_late[a], [x[a] - des_start[a], 0])
+        model.AddMaxEquality(duration_short[a], [des_duration[a] - d[a], 0])
+        model.AddMaxEquality(duration_long[a], [d[a] - des_duration[a], 0])
+
     activity_utilities = [
-        p_st_e[flex_early[a]] * max(des_start[a] - x[a], 0) +
-        p_st_l[flex_late[a]] * max(x[a] - des_start[a], 0) +
-        p_dur_s[flex_short[a]] * max(des_duration[a] - d[a], 0) +
-        p_dur_l[flex_long[a]] * max(d[a] - des_duration[a], 0) +
+        p_st_e[flex_early[a]] * start_time_early[a] +
+        p_st_l[flex_late[a]] * start_time_late[a] +
+        p_dur_s[flex_short[a]] * duration_short[a] +
+        p_dur_l[flex_long[a]] * duration_long[a] +
         p_t * sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
         for a in activities
     ]
 
     error_utility = [
+        # TODO piecewise doesn't work when applied to elements
         error_w(w[a]) +
         error_x(x[a]) +
         error_d(d[a]) +
@@ -113,3 +124,24 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     ]
 
     model.Maximize(ev_error + sum(w[a] * activity_utilities[a] + error_utility[a] for a in activities))
+
+    # ==========================================
+    # = Solving the problem                    =
+    # ==========================================
+
+    solver = cp_model.CpSolver()
+    status = solver.Solve(model)
+
+    return status, model
+
+
+if __name__ == '__main__':
+    EXAMPLE_PATH = "../milp/example/"
+    h = 145440
+    df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
+
+    tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
+    travel_times = {'driving': tt_driving}
+
+    status, model = optimize_schedule(df, travel_times)
+    print(status)

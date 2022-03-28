@@ -1,6 +1,8 @@
 from typing import List, Tuple, Callable
 
-from model import TIME_PERIOD
+TIME_PERIOD = 5
+MAX_MINUTES = 24 * 60
+MAX_TIME = MAX_MINUTES // TIME_PERIOD
 
 
 def discretize_dict(d: dict) -> dict:
@@ -8,7 +10,7 @@ def discretize_dict(d: dict) -> dict:
 
 
 def hours_to_time_step(hours: float, time_period=TIME_PERIOD) -> int:
-    return (hours * 60) // time_period
+    return int((hours * 60) // time_period)
 
 
 def piecewise(pre_slope: float, breaks_xy: List[Tuple[float, float]], post_slope: float) -> Callable[[float], float]:
