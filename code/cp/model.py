@@ -3,8 +3,9 @@ import pickle
 import pandas as pd
 from ortools.sat.python import cp_model
 
-from parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, extract_activities, \
-    prepare_data
+from parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, \
+    extract_activities, prepare_data
+from schedules import model_to_schedule, plot_schedule
 from utils import MAX_TIME
 
 
@@ -15,10 +16,8 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
 
     df, travel_times = prepare_data(df, travel_times)
 
-    p_st_e, p_st_l, p_dur_s, p_dur_l, p_t = extract_penalties(parameters)
     error_w, error_x, error_d, error_z, ev_error = extract_error_terms(deterministic, parameters)
     feasible_start, feasible_end, des_start, des_duration = extract_times(df, parameters)
-    flex_early, flex_late, flex_short, flex_long = extract_flexibilities(df)
     activities, location, group, mode, act_id = extract_activities(df)
 
     model = cp_model.CpModel()
@@ -94,13 +93,56 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # = Objective function                     =
     # ==========================================
 
+    activity_penalties = create_activity_penalties(df, model, activities, w, x, d, z, location, mode, parameters,
+                                                   travel_times)
+
+    error_utility = [
+        # TODO piecewise doesn't work when applied to elements
+        # error_w(w[a]) +
+        # error_x(x[a]) +
+        # error_d(d[a]) +
+        # sum(error_z(z[(a, b)]) for b in activities)
+        # for a in activities
+    ]
+
+    # Heavily penalize days lasting longer than MAX_TIME so that model selects the lowest one
+    time_over_max = model.NewIntVar(-MAX_TIME, MAX_TIME, 'time_over_max')
+    model.Add(time_over_max == (day_duration - MAX_TIME))
+
+    # model.Maximize(ev_error + sum(w[a] * activity_utilities[a] + error_utility[a] for a in activities))
+    model.Maximize(ev_error + sum(activity_penalties[a] for a in activities) - 10000 * time_over_max)
+
+    # ==========================================
+    # = Solving the problem                    =
+    # ==========================================
+
+    solver = cp_model.CpSolver()
+
+    solver.parameters.enumerate_all_solutions = True
+    solution_printer = cp_model.VarArrayAndObjectiveSolutionPrinter(w.values())
+    status = solver.Solve(model, solution_printer)
+
+    # ==========================================
+    # = Printing the solutions                 =
+    # ==========================================
+
+    schedule = model_to_schedule(model, solver, activities, w, x, d, location, act_id)
+    plot_schedule(schedule)
+
+    return status, solver, model
+
+
+def create_activity_penalties(df, model, activities, w, x, d, z, location, mode, parameters, travel_times):
+    p_st_e, p_st_l, p_dur_s, p_dur_l, p_t = extract_penalties(parameters)
+    flex_early, flex_late, flex_short, flex_long = extract_flexibilities(df)
+    _, _, des_start, des_duration = extract_times(df, parameters)
+
     start_time_early = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'desired_start_{a} - x_{a}') for a in activities}
     start_time_late = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'x_{a} - desired_time_{a}') for a in activities}
     duration_short = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'des_duration_{a} - d_{a}]') for a in activities}
     duration_long = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'd_{a} - des_duration_{a}') for a in activities}
 
     for a in activities:
-
         positive_start_early = model.NewBoolVar(f'positive_start_early_{a}')
         positive_start_late = model.NewBoolVar(f'positive_start_late_{a}')
         positive_duration_short = model.NewBoolVar(f'positive_duration_short_{a}')
@@ -134,7 +176,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
         model.Add(duration_short[a] == 0).OnlyEnforceIf(w[a].Not())
         model.Add(duration_long[a] == 0).OnlyEnforceIf(w[a].Not())
 
-    activity_utility = {
+    return {
         a:
             p_st_e[flex_early[a]] * start_time_early[a] +
             p_st_l[flex_late[a]] * start_time_late[a] +
@@ -143,31 +185,6 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
             p_t * sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
         for a in activities
     }
-
-    error_utility = [
-        # TODO piecewise doesn't work when applied to elements
-        # error_w(w[a]) +
-        # error_x(x[a]) +
-        # error_d(d[a]) +
-        # sum(error_z(z[(a, b)]) for b in activities)
-        # for a in activities
-    ]
-
-    # Heavily penalize days lasting longer than MAX_TIME so that model selects the lowest one
-    time_over_max = model.NewIntVar(-MAX_TIME, MAX_TIME, 'time_over_max')
-    model.Add(time_over_max == (day_duration - MAX_TIME))
-
-    # model.Maximize(ev_error + sum(w[a] * activity_utilities[a] + error_utility[a] for a in activities))
-    model.Maximize(ev_error + sum(activity_utility[a] for a in activities) + 10000 * time_over_max)
-
-    # ==========================================
-    # = Solving the problem                    =
-    # ==========================================
-
-    solver = cp_model.CpSolver()
-    status = solver.Solve(model)
-
-    return status, solver.StatusName(status), model
 
 
 if __name__ == '__main__':
@@ -178,5 +195,6 @@ if __name__ == '__main__':
     tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
     travel_times_by_mode = {'driving': tt_driving}
 
-    status, status_name, model = optimize_schedule(activities_df, travel_times_by_mode)
-    print(status_name, model.Validate())
+    status, solver, model = optimize_schedule(activities_df, travel_times_by_mode)
+
+    print(solver.StatusName(status), model.Validate())
