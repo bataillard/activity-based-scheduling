@@ -5,12 +5,20 @@ MAX_MINUTES = 24 * 60
 MAX_TIME = MAX_MINUTES // TIME_PERIOD
 
 
-def discretize_dict(d: dict) -> dict:
+def scale_to_discrete_time_step(d: dict) -> dict:
+    return {key: hours_to_discrete_time_step(value) for key, value in d.items()}
+
+
+def scale_to_time_step(d: dict) -> dict:
     return {key: hours_to_time_step(value) for key, value in d.items()}
 
 
-def hours_to_time_step(hours: float, time_period=TIME_PERIOD) -> int:
+def hours_to_discrete_time_step(hours: float, time_period=TIME_PERIOD) -> int:
     return int((hours * 60) // time_period)
+
+
+def hours_to_time_step(hours: float, time_period=TIME_PERIOD) -> float:
+    return (hours * 60) / time_period
 
 
 def piecewise(pre_slope: float, breaks_xy: List[Tuple[float, float]], post_slope: float) -> Callable[[float], float]:

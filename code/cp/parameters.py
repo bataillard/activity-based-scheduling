@@ -4,7 +4,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from utils import hours_to_time_step, discretize_dict, piecewise
+from utils import hours_to_discrete_time_step, scale_to_discrete_time_step, piecewise, scale_to_time_step, \
+    hours_to_time_step
 from ast import literal_eval
 
 
@@ -103,7 +104,7 @@ def prepare_data(df: pd.DataFrame, travel_times: dict):
     # Prepare Travel Times dictionary
     for mode, origins in travel_times.items():
         for origin, destinations in origins.items():
-            travel_times[mode][origin] = discretize_dict(destinations)
+            travel_times[mode][origin] = scale_to_discrete_time_step(destinations)
 
     return df, travel_times
 
@@ -114,16 +115,17 @@ def extract_penalties(parameters: Optional[pd.DataFrame] = None):
         p_st_l = {'F': 0, 'M': -2.4, 'R': -9.6}  # penalties for late arrival
         p_dur_s = {'F': -0.61, 'M': -2.4, 'R': -9.6}  # penalties for short duration
         p_dur_l = {'F': -0.61, 'M': -2.4, 'R': -9.6}  # penalties for long duration
-        p_t = hours_to_time_step(-1)  # penalty for travel time
+        p_t = hours_to_discrete_time_step(-1)  # penalty for travel time
     else:
         p_st_e = {'F': parameters['p_st_e_f'], 'M': parameters['p_st_e_m'], 'R': parameters['p_st_e_r']}
         p_st_l = {'F': parameters['p_st_l_f'], 'M': parameters['p_st_l_m'], 'R': parameters['p_st_l_r']}
         p_dur_s = {'F': parameters['p_dur_s_f'], 'M': parameters['p_dur_s_m'], 'R': parameters['p_dur_s_r']}
         p_dur_l = {'F': parameters['p_dur_l_f'], 'M': parameters['p_dur_l_m'], 'R': parameters['p_dur_l_r']}
 
-        p_t = hours_to_time_step(parameters['p_t']) # TODO make sure this should be discretized
+        p_t = hours_to_time_step(parameters['p_t'])
 
-    return p_st_e, p_st_l, p_dur_s, p_dur_l, p_t
+    return scale_to_time_step(p_st_e), scale_to_time_step(p_st_l), scale_to_time_step(p_dur_s), \
+           scale_to_time_step(p_dur_l), p_t
 
 
 def extract_error_terms(deterministic: bool, parameters: Optional[pd.DataFrame] = None):
@@ -168,10 +170,11 @@ def extract_times(activities: pd.DataFrame, parameters: Optional[pd.DataFrame] =
             des_start[row.label] = pref_st[row.act_id]
             des_duration[row.label] = pref_dur[row.act_id]
 
-    feasible_start = discretize_dict(activities.set_index('label')['feasible_start'].to_dict())
-    feasible_end = discretize_dict(activities.set_index('label')['feasible_end'].to_dict())
+    feasible_start = scale_to_discrete_time_step(activities.set_index('label')['feasible_start'].to_dict())
+    feasible_end = scale_to_discrete_time_step(activities.set_index('label')['feasible_end'].to_dict())
 
-    return feasible_start, feasible_end, discretize_dict(des_start), discretize_dict(des_duration)
+    return feasible_start, feasible_end, scale_to_discrete_time_step(des_start), scale_to_discrete_time_step(
+        des_duration)
 
 
 def extract_flexibilities(activities: pd.DataFrame):

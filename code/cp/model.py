@@ -44,8 +44,9 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # ==========================================
 
     # 11. Durations and travel times sum to time budget
-    model.Add(MAX_TIME == sum(d[a] + z[(a, b)] * travel_times[mode[a]][location[a]][location[b]]
-                              for a in activities for b in activities))
+    day_duration = sum(d[a] + z[(a, b)] * travel_times[mode[a]][location[a]][location[b]]
+                       for a in activities for b in activities)
+    model.Add(MAX_TIME >= day_duration)
 
     # 12. Dusk and dawn are mandatory
     model.Add(w['dawn'] == 1)
@@ -53,7 +54,6 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
 
     for a in activities:
         # 13. Activity lasts longer than minimum duration
-        # TODO make sure this is actually correct (what is minimum duration?)
         model.Add(0 <= d[a]).OnlyEnforceIf(w[a])
 
         # 14. Activity lasts less than whole day
@@ -61,7 +61,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
 
         # 15. Activities can only follow each other once
         for b in activities:
-            model.AddBoolAnd((z[(a, b)].Not(), z[(b, a)].Not()))
+            model.AddBoolOr((z[(a, b)].Not(), z[(b, a)].Not()))
 
         # 16. Dawn and dusk have no predecessor or successor
         model.Add(z[(a, 'dawn')] == 0)
@@ -94,36 +94,71 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # = Objective function                     =
     # ==========================================
 
-    start_time_early = {a: model.NewIntVar(0, MAX_TIME, f'desired_start_{a} - x_{a}') for a in activities}
-    start_time_late = {a: model.NewIntVar(0, MAX_TIME, f'x_{a} - desired_time_{a}') for a in activities}
-    duration_short = {a: model.NewIntVar(0, MAX_TIME, f'des_duration_{a} - d_{a}]') for a in activities}
-    duration_long = {a: model.NewIntVar(0, MAX_TIME, f'd_{a} - des_duration_{a}') for a in activities}
+    start_time_early = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'desired_start_{a} - x_{a}') for a in activities}
+    start_time_late = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'x_{a} - desired_time_{a}') for a in activities}
+    duration_short = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'des_duration_{a} - d_{a}]') for a in activities}
+    duration_long = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'd_{a} - des_duration_{a}') for a in activities}
 
     for a in activities:
-        model.AddMaxEquality(start_time_early[a], [des_start[a] - x[a], 0])
-        model.AddMaxEquality(start_time_late[a], [x[a] - des_start[a], 0])
-        model.AddMaxEquality(duration_short[a], [des_duration[a] - d[a], 0])
-        model.AddMaxEquality(duration_long[a], [d[a] - des_duration[a], 0])
 
-    activity_utilities = [
-        p_st_e[flex_early[a]] * start_time_early[a] +
-        p_st_l[flex_late[a]] * start_time_late[a] +
-        p_dur_s[flex_short[a]] * duration_short[a] +
-        p_dur_l[flex_long[a]] * duration_long[a] +
-        p_t * sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
+        positive_start_early = model.NewBoolVar(f'positive_start_early_{a}')
+        positive_start_late = model.NewBoolVar(f'positive_start_late_{a}')
+        positive_duration_short = model.NewBoolVar(f'positive_duration_short_{a}')
+        positive_duration_long = model.NewBoolVar(f'positive_duration_long_{a}')
+
+        model.Add(des_start[a] - x[a] >= 0).OnlyEnforceIf(positive_start_early)
+        model.Add(des_start[a] - x[a] < 0).OnlyEnforceIf(positive_start_early.Not())
+        model.Add(x[a] - des_start[a] >= 0).OnlyEnforceIf(positive_start_late)
+        model.Add(x[a] - des_start[a] < 0).OnlyEnforceIf(positive_start_late.Not())
+        model.Add(des_duration[a] - d[a] >= 0).OnlyEnforceIf(positive_duration_short)
+        model.Add(des_duration[a] - d[a] < 0).OnlyEnforceIf(positive_duration_short)
+        model.Add(d[a] - des_duration[a] >= 0).OnlyEnforceIf(positive_duration_long)
+        model.Add(d[a] - des_duration[a] < 0).OnlyEnforceIf(positive_duration_long)
+
+        time_constraints = [
+            model.Add(start_time_early[a] == des_start[a] - x[a]).OnlyEnforceIf(positive_start_early),
+            model.Add(start_time_early[a] == 0).OnlyEnforceIf(positive_start_early.Not()),
+            model.Add(start_time_late[a] == x[a] - des_start[a]).OnlyEnforceIf(positive_start_late),
+            model.Add(start_time_late[a] == 0).OnlyEnforceIf(positive_start_late.Not()),
+            model.Add(duration_short[a] == des_duration[a] - d[a]).OnlyEnforceIf(positive_duration_short),
+            model.Add(duration_short[a] == 0).OnlyEnforceIf(positive_duration_short.Not()),
+            model.Add(duration_long[a] == d[a] - des_duration[a]).OnlyEnforceIf(positive_duration_long),
+            model.Add(duration_long[a] == 0).OnlyEnforceIf(positive_duration_long.Not())
+        ]
+
+        for tc in time_constraints:
+            tc.OnlyEnforceIf(w[a])
+
+        model.Add(start_time_early[a] == 0).OnlyEnforceIf(w[a].Not())
+        model.Add(start_time_late[a] == 0).OnlyEnforceIf(w[a].Not())
+        model.Add(duration_short[a] == 0).OnlyEnforceIf(w[a].Not())
+        model.Add(duration_long[a] == 0).OnlyEnforceIf(w[a].Not())
+
+    activity_utility = {
+        a:
+            p_st_e[flex_early[a]] * start_time_early[a] +
+            p_st_l[flex_late[a]] * start_time_late[a] +
+            p_dur_s[flex_short[a]] * duration_short[a] +
+            p_dur_l[flex_long[a]] * duration_long[a] +
+            p_t * sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
         for a in activities
-    ]
+    }
 
     error_utility = [
         # TODO piecewise doesn't work when applied to elements
-        error_w(w[a]) +
-        error_x(x[a]) +
-        error_d(d[a]) +
-        sum(error_z(z[(a, b)]) for b in activities)
-        for a in activities
+        # error_w(w[a]) +
+        # error_x(x[a]) +
+        # error_d(d[a]) +
+        # sum(error_z(z[(a, b)]) for b in activities)
+        # for a in activities
     ]
 
-    model.Maximize(ev_error + sum(w[a] * activity_utilities[a] + error_utility[a] for a in activities))
+    # Heavily penalize days lasting longer than MAX_TIME so that model selects the lowest one
+    time_over_max = model.NewIntVar(-MAX_TIME, MAX_TIME, 'time_over_max')
+    model.Add(time_over_max == (day_duration - MAX_TIME))
+
+    # model.Maximize(ev_error + sum(w[a] * activity_utilities[a] + error_utility[a] for a in activities))
+    model.Maximize(ev_error + sum(activity_utility[a] for a in activities) + 10000 * time_over_max)
 
     # ==========================================
     # = Solving the problem                    =
@@ -132,16 +167,16 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
 
-    return status, model
+    return status, solver.StatusName(status), model
 
 
 if __name__ == '__main__':
     EXAMPLE_PATH = "../milp/example/"
     h = 145440
-    df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
+    activities_df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
 
     tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
-    travel_times = {'driving': tt_driving}
+    travel_times_by_mode = {'driving': tt_driving}
 
-    status, model = optimize_schedule(df, travel_times)
-    print(status)
+    status, status_name, model = optimize_schedule(activities_df, travel_times_by_mode)
+    print(status_name, model.Validate())
