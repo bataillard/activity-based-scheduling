@@ -7,16 +7,16 @@ from ortools.sat.python.cp_model import CpModel, CpSolver
 
 
 def model_to_schedule(model: CpModel, solver: CpSolver, activities, w, x, d, location, act_id) -> pd.DataFrame:
-    schedule = pd.DataFrame(columns=['act_id', 'label', 'start_time', 'end_time', 'duration', 'location',
-                                     'mode', 'travel_time'])
+    schedule = pd.DataFrame(columns=['act_id', 'label', 'start_time', 'end_time', 'duration', 'location'])
 
     for idx, a in enumerate(activities):
-        print(f"{w[a].Name()}: {solver.BooleanValue(w[a])}")
         if solver.BooleanValue(w[a]):
             schedule.loc[idx, 'act_id'] = act_id[a]
             schedule.loc[idx, 'label'] = a
             schedule.loc[idx, 'start_time'] = solver.Value(x[a])
             schedule.loc[idx, 'duration'] = solver.Value(d[a])
+            schedule.loc[idx, 'location'] = location[a]
+
             schedule.end_time = schedule.start_time + schedule.duration
 
     return schedule
@@ -47,5 +47,4 @@ def plot_schedule(schedule: pd.DataFrame):
     plt.xlabel('Time [h]')
 
     plt.savefig('schedule.png')
-
-    return fig
+    plt.close(fig)
