@@ -51,8 +51,8 @@ def stepwise(model: CpModel, x: IntVar, pre_y: float, breaks_xy: List[Tuple[floa
 
         in_interval = model.NewBoolVar(f'{x_prev} <= {x.Name()} < {x_next}')
 
-        model.AddBoolAnd(less_than_prev.Not(), less_than_next).OnlyEnforceIf(in_interval)
-        model.AddBoolOr(less_than_prev, less_than_next.Not()).OnlyEnforceIf(in_interval.Not())
+        model.AddBoolAnd([less_than_prev.Not(), less_than_next]).OnlyEnforceIf(in_interval)
+        model.AddBoolOr([less_than_prev, less_than_next.Not()]).OnlyEnforceIf(in_interval.Not())
 
         steps.append(Step(in_interval, y_prev))
         x_prev, y_prev = x_next, y_next

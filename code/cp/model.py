@@ -23,8 +23,9 @@ def main():
     travel_times_by_mode = {'driving': tt_driving}
 
     wall_times = []
+    n_iter = 100
 
-    for n_iter in range(100):
+    for n_iter in range(n_iter):
         status, solver, model, schedule = optimize_schedule(activities_df, travel_times_by_mode)
         if n_iter % 10 == 0:
             print(schedule)
@@ -73,7 +74,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # 11. Durations and travel times sum to time budget
     day_duration = sum(d[a] + sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
                        for a in activities)
-    model.Add(MAX_TIME <= day_duration)
+    model.Add(MAX_TIME == day_duration)
 
     # 12. Dusk and dawn are mandatory
     model.Add(w['dawn'] == 1)
@@ -143,14 +144,8 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
         for a in activities
     }
 
-    # Heavily penalize days lasting longer than MAX_TIME so that model selects the lowest one
-    time_over_max = model.NewIntVar(-MAX_TIME, MAX_TIME, 'time_over_max')
-    model.Add(time_over_max == (day_duration - MAX_TIME))
-
-    # model.Maximize(sum(activity_penalties[a] + error_utility[a] for a in activities)
-    #                - TIME_OVER_MAX_PENALTY * time_over_max
-    #                + ev_error)
-    model.Maximize(sum(activity_penalties[a] for a in activities) - TIME_OVER_MAX_PENALTY * time_over_max + ev_error)
+    model.Maximize(sum(activity_penalties[a] + error_utility[a] for a in activities) + ev_error)
+    # model.Maximize(sum(activity_penalties[a] for a in activities) + ev_error)
 
     # ==========================================
     # = Solving the problem                    =
