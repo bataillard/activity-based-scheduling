@@ -1,13 +1,14 @@
 import pickle
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 from ortools.sat.python import cp_model
 
-from utils.parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, \
+from parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, \
     extract_activities, prepare_data
-from utils.schedules import model_to_schedule, plot_schedule
-from utils.general import MAX_TIME, stepwise
+from schedules import model_to_schedule, plot_schedule
+from utils import MAX_TIME, stepwise
 
 TIME_OVER_MAX_PENALTY = 10000
 MIN_DURATION = 1
