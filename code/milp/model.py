@@ -5,6 +5,7 @@ from data_utils import cplex_to_df, create_dicts, plot_schedule, plot_mode
 import pickle
 import googlemaps
 import json
+import time
 
 from docplex.mp.model import Model
 from docplex.mp.conflict_refiner import ConflictRefiner
@@ -142,7 +143,9 @@ def optimize_schedule(df=None, travel_times=None, n_iter=1, plot_every=10, mtmc=
     # + error_d*d[a]
     # + m.sum(error_z*z[a,b] for b in keys) for a in keys)+ EV_error)
 
+    start_time = time.time()
     solution = m.solve()
+    end_time = time.time()
     figure = None
     solution_df = None
     mode_figure = None
@@ -164,4 +167,4 @@ def optimize_schedule(df=None, travel_times=None, n_iter=1, plot_every=10, mtmc=
         if plot_mode:
             mode_figure = plot_mode(solution_df)
 
-    return solution_df, figure, solution_value, mode_figure
+    return solution_df, end_time - start_time, figure, solution_value, mode_figure,
