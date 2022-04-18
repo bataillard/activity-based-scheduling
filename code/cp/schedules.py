@@ -1,15 +1,19 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
 from matplotlib.colors import Normalize, ListedColormap
 from ortools.sat.python.cp_model import CpModel, CpSolver
 
 from utils import MAX_TIME, TIME_PERIOD
 
 
-def model_to_schedule(model: CpModel, solver: CpSolver, activities, w, x, d, location, act_id) -> pd.DataFrame:
-    schedule = pd.DataFrame(columns=['act_id', 'label', 'start_time', 'end_time', 'duration', 'location'])
+def model_to_schedule(model: CpModel, solver: CpSolver, activities, w, x, d,
+                      location, act_id, mode=None) -> pd.DataFrame:
+    schedule = pd.DataFrame(columns=['act_id', 'label', 'start_time', 'end_time', 'duration', 'location', 'mode'])
+
+    if not mode:
+        mode = {a: 'driving' for a in activities}
 
     for idx, a in enumerate(activities):
         if solver.BooleanValue(w[a]):
@@ -18,10 +22,19 @@ def model_to_schedule(model: CpModel, solver: CpSolver, activities, w, x, d, loc
             schedule.loc[idx, 'start_time'] = solver.Value(x[a])
             schedule.loc[idx, 'duration'] = solver.Value(d[a])
             schedule.loc[idx, 'location'] = location[a]
+            schedule.loc[idx, 'mode'] = mode[a]
 
             schedule.end_time = schedule.start_time + schedule.duration
 
     return schedule
+
+
+def model_indexed_to_schedule(model: CpModel, solver: CpSolver, activities, w, x, d, l, m,
+                              locations, modes, act_id) -> pd.DataFrame:
+    location = {a: locations[solver.Value(l[a])] for a in activities}
+    mode = {a: modes[solver.Value(m[a])] for a in activities}
+
+    return model_to_schedule(model, solver, activities, w, x, d, location, act_id, mode)
 
 
 def plot_schedule(schedule: pd.DataFrame):
@@ -31,7 +44,7 @@ def plot_schedule(schedule: pd.DataFrame):
     fig = plt.figure(figsize=[20, 3])
     y1 = [0, 0]
     y2 = [1, 1]
-    plt.fill_between([0, MAX_TIME+1], y1, y2, color='silver')
+    plt.fill_between([0, MAX_TIME + 1], y1, y2, color='silver')
 
     for idx, row in schedule.iterrows():
         x = [row['start_time'], row['end_time']]
@@ -42,7 +55,7 @@ def plot_schedule(schedule: pd.DataFrame):
             plt.text(txt_x, txt_y, '{}'.format(row['label']), horizontalalignment='center', verticalalignment='center',
                      fontsize=12)  # , fontweight = 'bold')
 
-    plt.xticks(np.arange(0, MAX_TIME+1, 60 / TIME_PERIOD))
+    plt.xticks(np.arange(0, MAX_TIME + 1, 60 / TIME_PERIOD))
     plt.yticks([])
     plt.xlim([0, MAX_TIME])
     plt.ylim([-1, 2])

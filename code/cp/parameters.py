@@ -1,12 +1,13 @@
+import copy
+from ast import literal_eval
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import numpy as np
 import pandas as pd
 
-from utils import hours_to_discrete_time_step, scale_to_discrete_time_step, stepwise, scale_to_time_step, \
-    hours_to_time_step
-from ast import literal_eval
+from utils import hours_to_discrete_time_step, scale_to_discrete_time_step, scale_to_time_step, \
+    hours_to_time_step, MAX_TIME
 
 
 @dataclass
@@ -109,6 +110,44 @@ def prepare_data(df: pd.DataFrame, travel_times: dict):
     return df, travel_times
 
 
+def prepare_indexed_data(df: pd.DataFrame, travel_times: dict) \
+        -> (pd.DataFrame, List[Tuple[float, float]], List[int], List[int], List[int]):
+    modes = ["driving", "bicycling", "transit", "walking"]
+
+    df = df.infer_objects()
+
+    # Convert locations back to tuple as they get imported as strings
+    df['location'] = df.location.apply(literal_eval)
+
+    # Find all locations and index them
+    locations = df['location'].unique()
+    location_indicies = {loc: idx for idx, loc in enumerate(locations)}
+
+    # Build a list of possible locations for each activity
+    activity_locations = {}
+    for activity, act_locs in df.groupby('label').location:
+        activity_locations[activity] = [location_indicies[loc] for loc in act_locs.unique()]
+
+    # Prepare Travel Times dictionary
+    travel_times = copy.deepcopy(travel_times)
+    for mode, origins in travel_times.items():
+        for origin, destinations in origins.items():
+            travel_times[mode][origin] = scale_to_discrete_time_step(destinations)
+
+    # Flatten travel times array (first element is )
+    tt_list = [0] * (len(modes) * len(locations) ** 2 + 1)
+
+    for m, mode in enumerate(modes):
+        for o, origin in enumerate(locations):
+            for d, destination in enumerate(locations):
+                index = compute_travel_time_index(locations, m, o, d)
+                tt_list[index] = travel_times.get(mode, {}) \
+                    .get(origin, {}) \
+                    .get(destination, MAX_TIME)
+
+    return df, activity_locations, tt_list, modes, locations
+
+
 def extract_penalties(parameters: Optional[pd.DataFrame] = None):
     if not parameters:
         p_st_e = {'F': 0, 'M': -0.61, 'R': -2.4}  # penalties for early arrival
@@ -190,3 +229,11 @@ def extract_activities(df: pd.DataFrame):
     act_id = df.set_index('label')['act_id'].to_dict()
 
     return activities, location, group, mode, act_id
+
+
+def extract_indexed_activities(df: pd.DataFrame):
+    return df.label.values.tolist(), df.set_index('label')['act_id'].to_dict()
+
+
+def compute_travel_time_index(locations, m, la, lb):
+    return (len(locations) ** 2) * m + len(locations) * la + lb
