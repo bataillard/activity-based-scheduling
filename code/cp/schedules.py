@@ -5,7 +5,7 @@ import seaborn as sns
 from matplotlib.colors import Normalize, ListedColormap
 from ortools.sat.python.cp_model import CpModel, CpSolver
 
-from utils import MAX_TIME, TIME_PERIOD
+from utils import MAX_TIME, TIME_PERIOD, get_index_col
 
 
 def model_to_schedule(model: CpModel, solver: CpSolver, activities, w, x, d,
@@ -37,9 +37,10 @@ def model_indexed_to_schedule(model: CpModel, solver: CpSolver, activities, w, x
     return model_to_schedule(model, solver, activities, w, x, d, location, act_id, mode)
 
 
-def plot_schedule(schedule: pd.DataFrame):
+def plot_schedule(schedule: pd.DataFrame, indexed=False):
     cmap = ListedColormap(sns.color_palette("colorblind").as_hex())
     norm = Normalize(vmin=1, vmax=11)
+    idx_col = get_index_col(indexed)
 
     fig = plt.figure(figsize=[20, 3])
     y1 = [0, 0]
@@ -51,8 +52,8 @@ def plot_schedule(schedule: pd.DataFrame):
         plt.fill_between(x, y1, y2, color=cmap(norm(row['act_id'])))
         txt_x = np.mean(x)
         txt_y = 1.2
-        if 'home' not in row['label']:
-            plt.text(txt_x, txt_y, '{}'.format(row['label']), horizontalalignment='center', verticalalignment='center',
+        if 'home' not in row[idx_col]:
+            plt.text(txt_x, txt_y, '{}'.format(row[idx_col]), horizontalalignment='center', verticalalignment='center',
                      fontsize=12)  # , fontweight = 'bold')
 
     plt.xticks(np.arange(0, MAX_TIME + 1, 60 / TIME_PERIOD))

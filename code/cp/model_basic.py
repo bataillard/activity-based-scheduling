@@ -1,4 +1,4 @@
-import pickle
+import pickle, joblib
 from collections import defaultdict
 
 import numpy as np
@@ -12,15 +12,19 @@ from utils import MAX_TIME, stepwise
 
 TIME_OVER_MAX_PENALTY = 10000
 MIN_DURATION = 1
+EXAMPLE_PATH = "../milp/example/"
+RES_PATH = "../../res/"
 
 
-def main():
-    EXAMPLE_PATH = "../milp/example/"
-    h = 145440
-    activities_df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
-
-    tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
-    travel_times_by_mode = {'driving': tt_driving}
+def main(example=False):
+    if example:
+        h = 145440
+        activities_df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
+        tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
+        travel_times_by_mode = {'driving': tt_driving}
+    else:
+        activities_df = pd.read_csv(RES_PATH + "claire_activities.csv")
+        _, travel_times_by_mode, _ = joblib.load(RES_PATH + 'claire_preprocessed.joblib', 'r')
 
     wall_times = []
     n_iter = 100
@@ -35,7 +39,6 @@ def main():
         # print(solver.StatusName(status), 'in', solver.WallTime())
 
     print(f'Solved in {sum(wall_times) / len(wall_times)}s on average')
-
 
 
 def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, deterministic=False, verbose=False):
@@ -77,7 +80,8 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     model.Add(MAX_TIME == day_duration)
 
     # 12. Dusk and dawn are mandatory
-    model.Add(w['dawn'] == 1)
+    model.Add(w['dawn'] == 1) # TODO this is broken when more than one dawn and dusk exist (e.g. when
+                              # multiple transport modes
     model.Add(w['dusk'] == 1)
 
     for a in activities:

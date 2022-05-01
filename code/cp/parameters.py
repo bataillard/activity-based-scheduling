@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from utils import hours_to_discrete_time_step, scale_to_discrete_time_step, scale_to_time_step, \
-    hours_to_time_step, MAX_TIME
+    hours_to_time_step, MAX_TIME, get_index_col
 
 
 @dataclass
@@ -119,13 +119,20 @@ def prepare_indexed_data(df: pd.DataFrame, travel_times: dict) \
     # Convert locations back to tuple as they get imported as strings
     df['location'] = df.location.apply(literal_eval)
 
+    # Create groups and set first and last to dawn and dusk,
+    # as dawn and dusk are allowed to be duplicated
+    if 'group' not in df.columns:
+        df['group'] = df.act_label.copy()
+        df.loc[0, 'group'] = 'dawn'
+        df.loc[df.index[-1], 'group'] = 'dusk'
+
     # Find all locations and index them
     locations = df['location'].unique()
     location_indicies = {loc: idx for idx, loc in enumerate(locations)}
 
-    # Build a list of possible locations for each activity
+    # Build a list of possible locations for each group of duplicated activities
     activity_locations = {}
-    for activity, act_locs in df.groupby('label').location:
+    for activity, act_locs in df.groupby('group').location:
         activity_locations[activity] = [location_indicies[loc] for loc in act_locs.unique()]
 
     # Prepare Travel Times dictionary
@@ -185,10 +192,12 @@ def extract_error_terms(deterministic: bool, parameters: Optional[pd.DataFrame] 
         error_z), hours_to_time_step(ev_error)
 
 
-def extract_times(activities: pd.DataFrame, parameters: Optional[pd.DataFrame] = None):
+def extract_times(activities: pd.DataFrame, parameters: Optional[pd.DataFrame] = None, indexed=False):
+    idx_col = get_index_col(indexed)
+
     if not parameters:
-        des_start = activities.set_index('label')['start_time'].to_dict()
-        des_duration = activities.set_index('label')['duration'].to_dict()
+        des_start = activities.set_index(idx_col)['start_time'].to_dict()
+        des_duration = activities.set_index(idx_col)['duration'].to_dict()
     else:
         pref_st = {1: parameters['d_st_h'], 2: parameters['d_st_w'], 3: parameters['d_st_edu'], 4: parameters['d_st_s'],
                    5: parameters['d_st_er'], 6: parameters['d_st_b'], 8: parameters['d_st_l'], 9: parameters['d_st_es']}
@@ -202,37 +211,43 @@ def extract_times(activities: pd.DataFrame, parameters: Optional[pd.DataFrame] =
         des_duration = {}
 
         for i, row in activities.iterrows():
-            des_start[row.label] = pref_st[row.act_id]
-            des_duration[row.label] = pref_dur[row.act_id]
+            des_start[row[idx_col]] = pref_st[row.act_id]
+            des_duration[row[idx_col]] = pref_dur[row.act_id]
 
-    feasible_start = scale_to_discrete_time_step(activities.set_index('label')['feasible_start'].to_dict())
-    feasible_end = scale_to_discrete_time_step(activities.set_index('label')['feasible_end'].to_dict())
+    feasible_start = scale_to_discrete_time_step(activities.set_index(idx_col)['feasible_start'].to_dict())
+    feasible_end = scale_to_discrete_time_step(activities.set_index(idx_col)['feasible_end'].to_dict())
 
     return feasible_start, feasible_end, scale_to_discrete_time_step(des_start), scale_to_discrete_time_step(
         des_duration)
 
 
-def extract_flexibilities(activities: pd.DataFrame):
-    flex_early = activities.set_index('label')['flex_early'].to_dict()
-    flex_late = activities.set_index('label')['flex_late'].to_dict()
-    flex_short = activities.set_index('label')['flex_short'].to_dict()
-    flex_long = activities.set_index('label')['flex_long'].to_dict()
+def extract_flexibilities(activities: pd.DataFrame, indexed=False):
+    idx_col = get_index_col(indexed)
+
+    flex_early = activities.set_index(idx_col)['flex_early'].to_dict()
+    flex_late = activities.set_index(idx_col)['flex_late'].to_dict()
+    flex_short = activities.set_index(idx_col)['flex_short'].to_dict()
+    flex_long = activities.set_index(idx_col)['flex_long'].to_dict()
 
     return flex_early, flex_late, flex_short, flex_long
 
 
 def extract_activities(df: pd.DataFrame):
-    activities = df.label.values.tolist()
-    location = df.set_index('label')['location'].to_dict()
-    group = df.set_index('label')['group'].to_dict() if 'group' in df.columns else None
-    mode = df.set_index('label')['mode'].to_dict() if 'mode' in df.columns else None
-    act_id = df.set_index('label')['act_id'].to_dict()
+    idx_col = get_index_col(indexed=False)
+
+    activities = df[idx_col].unique().tolist()
+    location = df.set_index(idx_col)['location'].to_dict()
+    group = df.set_index(idx_col)['group'].to_dict() if 'group' in df.columns else None
+    mode = df.set_index(idx_col)['mode'].to_dict() if 'mode' in df.columns else None
+    act_id = df.set_index(idx_col)['act_id'].to_dict()
 
     return activities, location, group, mode, act_id
 
 
 def extract_indexed_activities(df: pd.DataFrame):
-    return df.label.values.tolist(), df.set_index('label')['act_id'].to_dict()
+    idx_col = get_index_col(indexed=True)
+    return df[get_index_col(idx_col)].unique().tolist(), \
+           df.groupby(idx_col)['act_id'].first().to_dict()
 
 
 def compute_travel_time_index(locations, m, la, lb):

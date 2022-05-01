@@ -1,0 +1,14 @@
+act_id,act_label,label,start_time,end_time,duration,feasible_start,feasible_end,location,loc_id,categories,flex_early,flex_late,flex_short,flex_long,mode,group
+1.0,home,dawn,0.0,9.5,9.5,0,24,"(46.6149, 6.50523)",3,discret,F,M,F,F,driving,dawn
+1.0,home,dawn (b),0.0,9.5,9.5,0,24,"(46.6149, 6.50523)",3,discret,F,M,F,F,bicycling,dawn
+1.0,home,dawn (t),0.0,9.5,9.5,0,24,"(46.6149, 6.50523)",3,discret,F,M,F,F,transit,dawn
+8.0,leisure,leisure (car),8.0,9.0,1.0,6,22,"(46.6131, 6.50688)",2,discret,F,M,F,F,driving,leisure
+5.0,errands_services,errands_services (car),9.75,10.0,0.25,7,23,"(46.6142, 6.50723)",0,mainten,M,M,M,F,driving,errands_services
+4.0,shopping,shopping (car),13.0,15.0,2.0,7,19,"(46.5032, 6.4116)",1,discret,F,M,F,F,driving,shopping
+9.0,escort,escort (car),14.166666666666664,14.183333333333335,0.0166666666666674,0,24,"(46.6131, 6.50688)",2,mainten,M,M,M,F,driving,escort
+2.0,work,work (bike),14.166666666666664,14.183333333333335,0.0166666666666674,5,23,"(46.5032, 6.4116)",1,mandat,R,R,R,M,bicycling,work
+2.0,work,work 2 (car),14.166666666666664,14.183333333333335,0.0166666666666674,5,23,"(46.5032, 6.4116)",2,mandat,R,R,R,M,driving,work
+2.0,work,work (car),14.416666666666664,18.83333333333333,4.416666666666666,5,23,"(46.5032, 6.4116)",1,mandat,R,R,R,M,driving,work
+1.0,home,dusk,19.08333333333333,24.0,4.916666666666668,0,24,"(46.6149, 6.50523)",3,discret,F,M,F,F,driving,dusk
+1.0,home,dusk (b),19.1,24.0,4.9,0,24,"(46.6149, 6.50523)",3,discret,F,M,F,F,bicycling,dusk
+1.0,home,dusk (t),19.1,24.0,4.9,0,24,"(46.6149, 6.50523)",3,discret,F,M,F,F,transit,dusk

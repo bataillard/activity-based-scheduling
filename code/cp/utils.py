@@ -8,6 +8,10 @@ MAX_MINUTES = 24 * 60
 MAX_TIME = MAX_MINUTES // TIME_PERIOD
 
 
+def get_index_col(indexed=False):
+    return 'group' if indexed else 'label'
+
+
 def scale_to_discrete_time_step(d: dict) -> dict:
     return {key: hours_to_discrete_time_step(value) for key, value in d.items()}
 

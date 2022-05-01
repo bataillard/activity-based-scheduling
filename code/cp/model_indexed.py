@@ -1,4 +1,4 @@
-import pickle
+import pickle, joblib
 
 import numpy as np
 import pandas as pd
@@ -12,46 +12,30 @@ from utils import MAX_TIME, stepwise
 TIME_OVER_MAX_PENALTY = 10000
 MIN_DURATION = 1
 EXAMPLE_PATH = "../milp/example/"
+RES_PATH = "../../res/"
 
 
-def main():
-    h = 145440
-    activities_df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
-
-    tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
-    # travel_times_by_mode = {'driving': tt_driving}
-    travel_times_by_mode = {
-        'driving': {
-            (46.5355, 6.59967): {(46.5355, 6.59967): 0,
-                                 (46.5356, 6.60019): 0.17},
-            (46.5356, 6.60019): {(46.5355, 6.59967): 0.17,
-                                 (46.5356, 6.60019): 0}
-        },
-        'bicycling': {
-            (46.5355, 6.59967): {(46.5355, 6.59967): 0,
-                                 (46.5356, 6.60019): 0.25},
-            (46.5356, 6.60019): {(46.5355, 6.59967): 0.25,
-                                 (46.5356, 6.60019): 0}
-        },
-        'transit': {
-            (46.5355, 6.59967): {(46.5355, 6.59967): 0,
-                                 (46.5356, 6.60019): 0.09},
-            (46.5356, 6.60019): {(46.5355, 6.59967): 0.34,
-                                 (46.5356, 6.60019): 0}
-        },
-    }
+def main(example=True):
+    if example:
+        h = 145440
+        activities_df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
+        tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
+        travel_times_by_mode = {'driving': tt_driving}
+    else:
+        activities_df = pd.read_csv(RES_PATH + "claire_activities.csv")
+        _, travel_times_by_mode, _ = joblib.load(RES_PATH + 'claire_preprocessed.joblib', 'r')
 
     wall_times = []
     n_iter = 100
 
-    for n_iter in range(n_iter):
+    for i in range(n_iter):
         status, solver, model, schedule = optimize_schedule(activities_df, travel_times_by_mode)
-        if n_iter % 10 == 0:
+        if i % 10 == 0:
+            print(f"= Schedule {i}/{n_iter} ================")
             print(schedule)
+            print()
 
         wall_times.append(solver.WallTime())
-
-        # print(solver.StatusName(status), 'in', solver.WallTime())
 
     print(f'Solved in {sum(wall_times) / len(wall_times)}s on average')
 
@@ -64,7 +48,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
     df, activity_locations, travel_times, modes, locations = prepare_indexed_data(df, travel_times_dict)
 
     error_w, error_x, error_d, error_z, ev_error = extract_error_terms(deterministic, parameters)
-    feasible_start, feasible_end, des_start, des_duration = extract_times(df, parameters)
+    feasible_start, feasible_end, des_start, des_duration = extract_times(df, parameters, indexed=True)
     activities, act_id = extract_indexed_activities(df)
 
     model = cp_model.CpModel()
@@ -200,7 +184,6 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
         plot_schedule(schedule)
     else:
         print("Model is", solver.StatusName(status))
-        print(model.Proto())
         schedule = pd.DataFrame()
 
     return status, solver, model, schedule
@@ -208,8 +191,8 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
 
 def create_activity_penalties(df, model, activities, w, x, d, t, parameters):
     p_st_e, p_st_l, p_dur_s, p_dur_l, p_t = extract_penalties(parameters)
-    flex_early, flex_late, flex_short, flex_long = extract_flexibilities(df)
-    _, _, des_start, des_duration = extract_times(df, parameters)
+    flex_early, flex_late, flex_short, flex_long = extract_flexibilities(df, indexed=True)
+    _, _, des_start, des_duration = extract_times(df, parameters, indexed=True)
 
     start_time_early = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'desired_start_{a} - x_{a}') for a in activities}
     start_time_late = {a: model.NewIntVar(-MAX_TIME, MAX_TIME, f'x_{a} - desired_time_{a}') for a in activities}
