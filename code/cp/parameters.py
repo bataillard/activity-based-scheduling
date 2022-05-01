@@ -94,15 +94,18 @@ def prepare_data(df: pd.DataFrame, travel_times: dict):
     df['location'] = df.location.apply(literal_eval)
 
     # Ignore mode choice for this example
-    df['mode'] = modes[0]
+    if 'mode' not in df.columns:
+        df['mode'] = modes[0]
 
     # Create groups and set first and last to dawn and dusk,
     # as dawn and dusk are allowed to be duplicated
-    df['group'] = df.act_label.copy()
-    df.loc[0, 'group'] = 'dawn'
-    df.loc[df.index[-1], 'group'] = 'dusk'
+    if 'group' not in df.columns:
+        df['group'] = df.act_label.copy()
+        df.loc[0, 'group'] = 'dawn'
+        df.loc[df.index[-1], 'group'] = 'dusk'
 
     # Prepare Travel Times dictionary
+    travel_times = copy.deepcopy(travel_times)
     for mode, origins in travel_times.items():
         for origin, destinations in origins.items():
             travel_times[mode][origin] = scale_to_discrete_time_step(destinations)

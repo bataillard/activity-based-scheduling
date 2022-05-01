@@ -15,7 +15,7 @@ EXAMPLE_PATH = "../milp/example/"
 RES_PATH = "../../res/"
 
 
-def main(example=True):
+def main(example=False):
     if example:
         h = 145440
         activities_df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
