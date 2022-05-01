@@ -29,14 +29,14 @@ def main(example=False):
     wall_times = []
     n_iter = 100
 
-    for n_iter in range(n_iter):
+    for i in range(n_iter):
         status, solver, model, schedule = optimize_schedule(activities_df, travel_times_by_mode)
-        if n_iter % 10 == 0:
+        if i % 10 == 0:
+            print(f"= Schedule {i}/{n_iter} ================")
             print(schedule)
+            print()
 
         wall_times.append(solver.WallTime())
-
-        # print(solver.StatusName(status), 'in', solver.WallTime())
 
     print(f'Solved in {sum(wall_times) / len(wall_times)}s on average')
 
