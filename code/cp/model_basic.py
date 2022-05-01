@@ -80,8 +80,8 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     model.Add(MAX_TIME == day_duration)
 
     # 12. Dusk and dawn are mandatory
-    model.Add(w['dawn'] == 1) # TODO this is broken when more than one dawn and dusk exist (e.g. when
-                              # multiple transport modes
+    model.Add(w['dawn'] == 1)  # TODO this is broken when more than one dawn and dusk exist (e.g. when
+    # multiple transport modes
     model.Add(w['dusk'] == 1)
 
     for a in activities:
@@ -213,14 +213,14 @@ def create_activity_penalties(df, model, activities, w, x, d, z, location, mode,
         model.Add(duration_long[a] == 0).OnlyEnforceIf(w[a].Not())
 
     return {
-               a:
-                   p_st_e[flex_early[a]] * start_time_early[a] +
-                   p_st_l[flex_late[a]] * start_time_late[a] +
-                   p_dur_s[flex_short[a]] * duration_short[a] +
-                   p_dur_l[flex_long[a]] * duration_long[a] +
-                   p_t * sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
-               for a in activities
-           }
+        a:
+            p_st_e[flex_early[a]] * start_time_early[a] +
+            p_st_l[flex_late[a]] * start_time_late[a] +
+            p_dur_s[flex_short[a]] * duration_short[a] +
+            p_dur_l[flex_long[a]] * duration_long[a] +
+            p_t * sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
+        for a in activities
+    }
 
 
 if __name__ == '__main__':
