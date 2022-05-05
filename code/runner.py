@@ -17,8 +17,14 @@ import milp.model as milp
 from cp.schedules import plot_schedule
 from milp.data_utils import plot_schedule as milp_plot_schedule
 
-DataSource = Callable[[], Tuple[pd.DataFrame, dict]]
+DataLoadFunction = Callable[[], Tuple[pd.DataFrame, dict]]
 OptimizerFunction = Callable[[pd.DataFrame, dict], Tuple[int, CpSolver, CpModel, pd.DataFrame]]
+
+
+@dataclass
+class DataSource:
+    load_data: DataLoadFunction
+    name_prefix: str
 
 
 @dataclass
@@ -46,13 +52,13 @@ def main(data_source: DataSource, n_iter=100):
     times = [s.describe() for s in [basic_times, indexed_times, interval_times, milp_times]]
     times = pd.concat(times, axis=1).T
 
-    times.to_csv(OUTPUT_PATH / 'claire_results.csv')
+    times.to_csv(OUTPUT_PATH / 'results.csv')
     print(times)
 
 
 def run_cp(data_source: DataSource, optimizer: Model, n_iter: int,
            verbose: Union[bool, int] = False, print_schedules=False, export_to_csv=False):
-    activities, travel_times = data_source()
+    activities, travel_times = data_source.load_data()
 
     # Create output folders and empty them if necessary
     print_path = IMAGE_OUTPUT_PATH / optimizer.name_prefix
@@ -104,7 +110,7 @@ def run_cp(data_source: DataSource, optimizer: Model, n_iter: int,
 
 def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = False,
              print_schedules=False, export_to_csv=False):
-    activities, travel_times = data_source()
+    activities, travel_times = data_source.load_data()
 
     # Create output folders and empty them if necessary
     print_path = IMAGE_OUTPUT_PATH / 'milp'
@@ -163,5 +169,5 @@ def load_claire() -> (pd.DataFrame, dict):
 
 
 if __name__ == '__main__':
-    main(data_source=load_example)
-    main(data_source=load_claire)
+    main(data_source=DataSource(load_example, 'example'))
+    main(data_source=DataSource(load_claire, 'claire'))
