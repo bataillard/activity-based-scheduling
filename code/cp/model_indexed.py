@@ -47,9 +47,11 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
 
     df, activity_locations, travel_times, modes, locations = prepare_indexed_data(df, travel_times_dict)
 
+    driving_mode = modes.index('driving')
+
     error_w, error_x, error_d, error_z, ev_error = extract_error_terms(deterministic, parameters)
     feasible_start, feasible_end, des_start, des_duration = extract_times(df, parameters, indexed=True)
-    activities, act_id = extract_indexed_activities(df)
+    activities, act_id, is_home = extract_indexed_activities(df)
 
     model = cp_model.CpModel()
 
@@ -78,6 +80,12 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
 
     # Travel time
     t = {(a, b): model.NewIntVar(0, MAX_TIME, f'travel_time_{a}->{b}') for a in activities for b in activities}
+
+    # Car available indicator
+    car = {a: model.NewBoolVar(f'car_available_{a}') for a in activities}
+
+    # Takes car as mode indicator
+    drives = {a: model.NewBoolVar(f'drives_{a}') for a in activities}
 
     # ==========================================
     # = Constraints                            =
@@ -140,8 +148,32 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
             model.Add(tt_index == compute_travel_time_index(locations, m[a], l[a], l[b])).OnlyEnforceIf(z[(a, b)])
             model.AddElement(tt_index, travel_times, t[(a, b)])
 
+        # 26. Travel time is zero if activity doesn't occur
         for b in activities:
             model.Add(t[(a, b)] == 0).OnlyEnforceIf(z[(a, b)].Not())
+
+        # 29. Driving indicator is true only when mode is car
+        model.Add(m[a] == driving_mode).OnlyEnforceIf(drives[a])
+        model.Add(m[a] != driving_mode).OnlyEnforceIf(drives[a].Not())
+
+        # 30. Car is always available at home
+        if is_home[a]:
+            model.Add(car[a] == 1)
+
+        # 31. Activity may only be used if car available
+        model.Add(drives[a] == 0).OnlyEnforceIf(car[a].Not())
+
+        # 32. Car is only available if previous mode was driving
+        for b in activities:
+            if not is_home[b]:
+                model.Add(car[b] == drives[a])
+
+        # 32. Activity following one that uses the car must also use car
+        for b in activities:
+            if not is_home[b]:
+                model.Add(drives[b] == 1).OnlyEnforceIf(drives[a]).OnlyEnforceIf(z[(a, b)])
+
+
 
     # ==========================================
     # = Objective function                     =
