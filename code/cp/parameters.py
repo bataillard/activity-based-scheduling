@@ -1,87 +1,12 @@
 import copy
 from ast import literal_eval
-from dataclasses import dataclass, field
 from typing import Optional, List, Tuple
 
 import numpy as np
 import pandas as pd
 
-from utils import hours_to_discrete_time_step, scale_to_discrete_time_step, scale_to_time_step, \
+from cp.utils import hours_to_discrete_time_step, scale_to_discrete_time_step, scale_to_time_step, \
     hours_to_time_step, MAX_TIME, get_index_col
-
-
-@dataclass
-class Location:
-    id: int
-    lat: float
-    lon: float
-
-
-@dataclass
-class Mode:
-    name: str
-
-
-@dataclass
-class Timespan:
-    start: int
-    end: int
-    duration: int = field(init=False)
-
-    def __init__(self, start, end):
-        if not start <= end:
-            raise AttributeError(f"Start at {start} must occur before end at {end}")
-
-        self.start = start
-        self.end = end
-        self.duration = self.end - self.start
-
-
-@dataclass
-class Activity:
-    activity_id: int
-    group: str
-    label: str
-    location: Location
-    mode: Mode
-    mandatory: bool
-    preferred_start: Timespan
-    minimum_duration: int
-    desired_duration: Timespan
-    feasible_time_range: Timespan
-
-
-def build_activities(df: pd.DataFrame):
-    # TODO clean up other code
-    # Build locations
-    locations = df.groupby(['loc_id', 'location']).size().reset_index().drop(columns=0)
-    locations = locations.location.str.strip('()').str.split(',')
-    locations = locations.apply(lambda x: Location(x.loc_id, x.location[0], x.location[1]), axis=1) \
-        .set_index(locations.loc_id)
-
-    # Build travel modes
-    modes = [Mode('driving')]
-    df['mode'] = modes[0].name
-
-    #
-
-    for _, activity in df.iterrows():
-        build_activitiy(activity, locations)
-
-
-def build_activitiy(row: pd.Series, locations: pd.Series):
-    activity = Activity(
-        activity_id=row['act_id'],
-        label=row['label'],
-        location=locations[row['loc_id']],
-        mode=Mode(row['mode']),
-        # TODO complete this
-    )
-
-
-# ========================================================
-# Temporary code
-# ========================================================
 
 
 def prepare_data(df: pd.DataFrame, travel_times: dict):
@@ -243,7 +168,7 @@ def extract_activities(df: pd.DataFrame):
     group = df.set_index(idx_col)['group'].to_dict() if 'group' in df.columns else None
     mode = df.set_index(idx_col)['mode'].to_dict() if 'mode' in df.columns else None
     act_id = df.set_index(idx_col)['act_id'].to_dict()
-    is_home = (df.set_index(idx_col) ['act_id'] == 'home').to_dict()
+    is_home = (df.set_index(idx_col)['act_id'] == 'home').to_dict()
 
     return activities, location, group, mode, act_id, is_home
 

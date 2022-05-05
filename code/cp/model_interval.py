@@ -1,43 +1,13 @@
-import pickle, joblib
-
 import numpy as np
 import pandas as pd
 from ortools.sat.python import cp_model
 
-from parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, \
+from cp.parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, \
     extract_indexed_activities, prepare_indexed_data, compute_travel_time_index
-from schedules import plot_schedule, model_indexed_to_schedule
-from utils import MAX_TIME, stepwise
+from cp.schedules import model_indexed_to_schedule
+from cp.utils import MAX_TIME, stepwise
 
-TIME_OVER_MAX_PENALTY = 10000
 MIN_DURATION = 1
-EXAMPLE_PATH = "../milp/example/"
-RES_PATH = "../../res/"
-
-
-def main(example=False):
-    if example:
-        h = 145440
-        activities_df = pd.read_csv(EXAMPLE_PATH + f'{h}.csv')
-        tt_driving = pickle.load(open(EXAMPLE_PATH + f'{h}_driving.pickle', "rb"))
-        travel_times_by_mode = {'driving': tt_driving}
-    else:
-        activities_df = pd.read_csv(RES_PATH + "claire_activities.csv")
-        _, travel_times_by_mode, _ = joblib.load(RES_PATH + 'claire_preprocessed.joblib', 'r')
-
-    wall_times = []
-    n_iter = 100
-
-    for i in range(n_iter):
-        status, solver, model, schedule = optimize_schedule(activities_df, travel_times_by_mode)
-        if i % 10 == 0:
-            print(f"= Schedule {i}/{n_iter} ================")
-            print(schedule)
-            print()
-
-        wall_times.append(solver.WallTime())
-
-    print(f'Solved in {sum(wall_times) / len(wall_times)}s on average')
 
 
 def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None, deterministic=False):
@@ -198,7 +168,6 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
     }
 
     model.Maximize(sum(activity_penalties[a] + error_utility[a] for a in activities) + ev_error)
-    # model.Maximize(sum(activity_penalties[a] for a in activities) + ev_error)
 
     # ==========================================
     # = Solving the problem                    =
@@ -213,9 +182,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         schedule = model_indexed_to_schedule(model, solver, activities, w, x, d, l, m, locations, modes, act_id)
-        plot_schedule(schedule)
     else:
-        print("Model is", solver.StatusName(status))
         schedule = pd.DataFrame()
 
     return status, solver, model, schedule

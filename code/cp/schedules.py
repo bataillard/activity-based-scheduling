@@ -5,7 +5,7 @@ import seaborn as sns
 from matplotlib.colors import Normalize, ListedColormap
 from ortools.sat.python.cp_model import CpModel, CpSolver
 
-from utils import MAX_TIME, TIME_PERIOD, get_index_col
+from cp.utils import MAX_TIME, TIME_PERIOD, get_index_col
 
 
 def model_to_schedule(model: CpModel, solver: CpSolver, activities, w, x, d,
@@ -37,10 +37,11 @@ def model_indexed_to_schedule(model: CpModel, solver: CpSolver, activities, w, x
     return model_to_schedule(model, solver, activities, w, x, d, location, act_id, mode)
 
 
-def plot_schedule(schedule: pd.DataFrame, indexed=False):
+def plot_schedule(schedule: pd.DataFrame, path='cp_schedule.png'):
     cmap = ListedColormap(sns.color_palette("colorblind").as_hex())
     norm = Normalize(vmin=1, vmax=11)
-    idx_col = get_index_col(indexed)
+
+    idx_col = get_index_col(indexed=False)
 
     fig = plt.figure(figsize=[20, 3])
     y1 = [0, 0]
@@ -62,5 +63,5 @@ def plot_schedule(schedule: pd.DataFrame, indexed=False):
     plt.ylim([-1, 2])
     plt.xlabel('Time [h]')
 
-    plt.savefig('cp_schedule.png')
+    plt.savefig(path)
     plt.close(fig)
