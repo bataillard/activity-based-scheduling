@@ -243,14 +243,19 @@ def extract_activities(df: pd.DataFrame):
     group = df.set_index(idx_col)['group'].to_dict() if 'group' in df.columns else None
     mode = df.set_index(idx_col)['mode'].to_dict() if 'mode' in df.columns else None
     act_id = df.set_index(idx_col)['act_id'].to_dict()
+    is_home = (df.set_index(idx_col) ['act_id'] == 'home').to_dict()
 
-    return activities, location, group, mode, act_id
+    return activities, location, group, mode, act_id, is_home
 
 
 def extract_indexed_activities(df: pd.DataFrame):
     idx_col = get_index_col(indexed=True)
-    return df[get_index_col(idx_col)].unique().tolist(), \
-           df.groupby(idx_col)['act_id'].first().to_dict()
+
+    activities = df[get_index_col(idx_col)].unique().tolist()
+    act_ids = df.groupby(idx_col)['act_id'].first()
+    is_home = (act_ids == 'home')
+
+    return activities, act_ids.to_dict(), is_home.to_dict()
 
 
 def compute_travel_time_index(locations, m, la, lb):

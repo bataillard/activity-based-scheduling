@@ -50,7 +50,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
 
     error_w, error_x, error_d, error_z, ev_error = extract_error_terms(deterministic, parameters)
     feasible_start, feasible_end, des_start, des_duration = extract_times(df, parameters)
-    activities, location, group, mode, act_id = extract_activities(df)
+    activities, location, group, act_mode, act_id, is_home = extract_activities(df)
 
     model = cp_model.CpModel()
 
@@ -70,12 +70,15 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # Duration
     d = {a: model.NewIntVar(0, MAX_TIME, f'dur_{a}') for a in activities}
 
+    # Uses private mode (car, bike) indicator
+    mode_car = {a: model.NewBoolVar(f'car_available_{a}') for a in activities}
+
     # ==========================================
     # = Constraints                            =
     # ==========================================
 
     # 11. Durations and travel times sum to time budget
-    day_duration = sum(d[a] + sum(z[(a, b)] * travel_times[mode[a]][location[a]][location[b]] for b in activities)
+    day_duration = sum(d[a] + sum(z[(a, b)] * travel_times[act_mode[a]][location[a]][location[b]] for b in activities)
                        for a in activities)
     model.Add(MAX_TIME == day_duration)
 
@@ -116,12 +119,11 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
         # 19. Activities that follow each other much have matching respective end and start times
         for b in activities:
             if a != b:
-                model.Add(x[a] + d[a] + travel_times[mode[a]][location[a]][location[b]] == x[b]) \
+                model.Add(x[a] + d[a] + travel_times[act_mode[a]][location[a]][location[b]] == x[b]) \
                     .OnlyEnforceIf(z[(a, b)])
 
         # 21. Only a single duplicate activity is selected
-        ddd = [w[b] for b in activities if group[b] == group[a]]
-        model.Add(sum(ddd) <= 1)
+        model.Add(sum(w[b] for b in activities if group[b] == group[a]) <= 1)
 
         # 22. Activity starts after opening
         model.Add(x[a] >= feasible_start[a])
@@ -129,11 +131,25 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
         # 23. Activity finishes before closing
         model.Add(x[a] + d[a] <= feasible_end[a])
 
+        # 30. Car is always available at home
+        if is_home[a]:
+            car_available = 1 if act_mode[a] == 'driving' else 0
+            model.Add(mode_car[a] == car_available)
+
+        # 31. Activity using car can only be used if car available
+        if act_mode[a] == 'driving':
+            model.Add(w[a] == 0).OnlyEnforceIf(mode_car[a].Not())
+
+        # 32. Activity following one that uses the car must also use car
+        for b in activities:
+            if not is_home[b]:
+                model.Add(mode_car[b] == mode_car[a]).OnlyEnforceIf(z[(a, b)])
+
     # ==========================================
     # = Objective function                     =
     # ==========================================
 
-    activity_penalties = create_activity_penalties(df, model, activities, w, x, d, z, location, mode, parameters,
+    activity_penalties = create_activity_penalties(df, model, activities, w, x, d, z, location, act_mode, parameters,
                                                    travel_times)
 
     error_w_steps = {a: stepwise(model, w[a], 0, [(k, error_w[k]) for k in [0, 1]]) for a in activities}
@@ -167,7 +183,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times: dict, parameters=None, det
     # ==========================================
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        schedule = model_to_schedule(model, solver, activities, w, x, d, location, act_id, mode)
+        schedule = model_to_schedule(model, solver, activities, w, x, d, location, act_id, act_mode)
         plot_schedule(schedule)
     else:
         print("Model is", solver.StatusName(status))
