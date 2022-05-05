@@ -42,17 +42,13 @@ def cplex_to_df(w, x, d, tt, car_avail, mode, keys, act_id, location, minutes=Fa
     return solution_df
 
 
-def plot_schedule(df, colors='cb'):
+def plot_schedule(df, path='milp_schedule.png'):
     '''
     Plots given schedule.
     df = Pandas dataframe containing schedule. The dataframe must contain the columns 'start_time', 'end_time', 'act_id' and 'label'
     '''
 
-    if colors == 'cb':
-        cmap = matplotlib.colors.ListedColormap(sns.color_palette("colorblind").as_hex())
-    else:
-        l = (Moonrise5_6.mpl_colors + GrandBudapest3_6.mpl_colors)
-        cmap = matplotlib.colors.ListedColormap(l, name='WesAnderson', N=10)
+    cmap = matplotlib.colors.ListedColormap(sns.color_palette("colorblind").as_hex())
     norm = matplotlib.colors.Normalize(vmin=1, vmax=11)
 
     fig = plt.figure(figsize=[20, 3])
@@ -77,7 +73,9 @@ def plot_schedule(df, colors='cb'):
     plt.xlabel('Time [h]')
     # plt.show()
 
-    return fig
+    plt.savefig(path)
+    plt.close(fig)
+
     # if save_png:
     # plt.savefig('schedule{}_{}.png'.format(df.hid.values[0],df.person_n.values[0]))
 
@@ -122,7 +120,8 @@ def create_dicts(df, preferences=None, minutes=False):
         df['start_time'] = (df.start_time.round()) * 60
         df['duration'] = (df.start_time.round()) * 60
 
-    location = df.set_index('label')['location'].to_dict()
+    location = df.set_index('label')['location']
+    location = location.apply(lambda x: tuple(map(float, x[1:-1].split(',')))).to_dict()
     # location = df.set_index('label')['loc_id'].to_dict()
     feas_start = df.set_index('label')['feasible_start'].to_dict()
     feas_end = df.set_index('label')['feasible_end'].to_dict()
@@ -147,16 +146,16 @@ def create_dicts(df, preferences=None, minutes=False):
             des_start[l] = st[ids[0]]
             des_duration[l] = dur[ids[0]]
 
-    if 'group' in df.columns:
-        group = df.set_index('label')['group'].to_dict()
-    else:
-        group = None
+    if 'group' not in df.columns:
+        df['group'] = df.loc[:, 'act_label']
+        df.loc[0, 'group'] = 'dawn' # as dawn and dusk are allowed to be duplicated
+        df.loc[df.index[-1], 'group'] = 'dusk'
 
-    if 'mode' in df.columns:
-        mode = df.set_index('label')['mode'].to_dict()
-    else:
-        mode = None
+    if 'mode' not in df.columns:
+        df['mode'] = 'driving'
 
+    group = df.set_index('label')['group'].to_dict()
+    mode = df.set_index('label')['mode'].to_dict()
     act_id = df.set_index('label')['act_id'].to_dict()
 
     keys = df.label.values.tolist()

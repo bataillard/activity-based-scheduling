@@ -1,18 +1,12 @@
-import pandas as pd
-import numpy as np
-from data_utils import cplex_to_df, create_dicts, plot_schedule, plot_mode
-
-import pickle
-import googlemaps
-import json
 import time
 
+import numpy as np
 from docplex.mp.model import Model
-from docplex.mp.conflict_refiner import ConflictRefiner
+
+from milp.data_utils import cplex_to_df, create_dicts
 
 
-def optimize_schedule(df=None, travel_times=None, n_iter=1, plot_every=10, mtmc=True, parameters=None,
-                      deterministic=False, plot_mode=False):
+def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic=False):
     '''
     Optimize schedule using CPLEX solver, given timing preferences and travel time matrix.
     Can produce a graphical output if specified (by argument plot_every)
@@ -65,6 +59,7 @@ def optimize_schedule(df=None, travel_times=None, n_iter=1, plot_every=10, mtmc=
     # dictionaries containing data
     keys, location, feasible_start, feasible_end, des_start, des_duration, flex_early, flex_late, flex_short, flex_long, group, mode, act_id = create_dicts(
         df, preferences)
+
     # print(keys, des_start, des_duration, flex_early, flex_late, flex_short, flex_long, mode)
 
     m = Model()
@@ -152,19 +147,13 @@ def optimize_schedule(df=None, travel_times=None, n_iter=1, plot_every=10, mtmc=
 
     try:
         solution_value = solution.get_objective_value()
-
     except:
         solution_value = None
         print('Could not find a solution - see details')
         print(m.solve_details)
         print('------------------')
-        return None
+        raise Exception('Could not find solution')
 
     solution_df = cplex_to_df(w, x, d, tt, md_car, mode, keys, act_id, location)  # transform into pandas dataframe
 
-    if n_iter % plot_every == 0:
-        figure = plot_schedule(solution_df)
-        if plot_mode:
-            mode_figure = plot_mode(solution_df)
-
-    return solution_df, end_time - start_time, figure, solution_value, mode_figure,
+    return solution_df, end_time - start_time
