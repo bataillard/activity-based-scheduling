@@ -37,10 +37,7 @@ INDEXED_MODEL = Model(indexed.optimize_schedule, name_prefix='indexed')
 INTERVAL_MODE = Model(interval.optimize_schedule, name_prefix='interval')
 
 
-def main():
-    n_iter = 100
-    data_source = load_claire
-
+def main(data_source: DataSource, n_iter=100):
     basic_times = run_cp(data_source, BASIC_MODEL, n_iter, verbose=10, print_schedules=True, export_to_csv=True)
     indexed_times = run_cp(data_source, INDEXED_MODEL, n_iter, verbose=10, print_schedules=True, export_to_csv=True)
     interval_times = run_cp(data_source, INTERVAL_MODE, n_iter, verbose=10, print_schedules=True, export_to_csv=True)
@@ -166,4 +163,5 @@ def load_claire() -> (pd.DataFrame, dict):
 
 
 if __name__ == '__main__':
-    main()
+    main(data_source=load_example)
+    main(data_source=load_claire)
