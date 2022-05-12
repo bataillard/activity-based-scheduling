@@ -239,7 +239,3 @@ def create_activity_penalties(df, model, activities, w, x, d, t, parameters):
             p_t * sum(t[(a, b)] for b in activities)
         for a in activities
     }
-
-
-if __name__ == '__main__':
-    main()

@@ -212,6 +212,3 @@ def create_activity_penalties(df, model, activities, w, x, d, z, location, mode,
         for a in activities
     }
 
-
-if __name__ == '__main__':
-    main()
