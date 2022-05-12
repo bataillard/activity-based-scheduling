@@ -140,11 +140,14 @@ dependencies:
   - zstd=1.4.9=haebb681_0
   - pip:
     - charset-normalizer==2.0.12
+    - configparser==5.2.0
     - cplex==20.1.0.0
     - docplex==2.22.213
     - googlemaps==4.6.0
     - idna==3.3
+    - joblib==1.1.0
     - ortools==9.2.9972
+    - pymysql==1.0.2
     - requests==2.27.1
     - urllib3==1.26.8
 prefix: /home/luca/Coding/EPFL/CS-498_SemProj/env
