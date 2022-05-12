@@ -1,3 +1,4 @@
+import itertools
 import pickle
 from pathlib import Path
 from typing import Tuple
@@ -25,7 +26,7 @@ def load_claire() -> (pd.DataFrame, dict):
 
 
 def load_random(n_activities=4, seed=None) -> (pd.DataFrame, dict):
-    num_other_activities = n_activities - 2
+    num_other_activities = n_activities - 2  # Subtract dusk and dawn
 
     rng = np.random.default_rng(seed=seed)
     dusk, dawn, home_location, next_act_id, rng = generate_dusk_dawn(rng)
@@ -37,8 +38,9 @@ def load_random(n_activities=4, seed=None) -> (pd.DataFrame, dict):
 
     duplicated_activities = duplicate_activities([dawn] + activities + [dusk])
     activities_df = pd.DataFrame.from_records(duplicated_activities)
+    travel_times = generate_travel_times(activities_df, rng)
 
-    return activities_df, {}
+    return activities_df, travel_times
 
 
 def generate_dusk_dawn(rng: np.random.Generator) -> (dict, dict, Tuple[float, float], int, np.random.Generator):
@@ -120,4 +122,30 @@ def duplicate_activities(activities):
 
     return duplicates
 
+
+def generate_travel_times(activities: pd.DataFrame, rng: np.random.Generator) -> dict:
+    locations = list(activities['location'].unique())
+    modes = list(activities['mode'].unique())
+
+    min_duration, max_duration = 0.1, 0.75  # Assume travel times between 5 min and 45 mins
+    travel_times = {}
+
+    for mode in modes:
+        travel_times[mode] = {}
+
+        for origin, destination in itertools.combinations_with_replacement(locations, 2):
+            if origin not in travel_times[mode]:
+                travel_times[mode][origin] = {}
+            if destination not in travel_times[mode]:
+                travel_times[mode][destination] = {}
+
+            if origin == destination:
+                time = 0
+            else:
+                time = rng.uniform(min_duration, max_duration)
+
+            travel_times[mode][origin][destination] = time
+            travel_times[mode][destination][origin] = time
+
+    return travel_times
 
