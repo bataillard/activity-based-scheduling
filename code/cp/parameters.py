@@ -16,7 +16,8 @@ def prepare_data(df: pd.DataFrame, travel_times: dict):
     df = df.infer_objects()
 
     # Convert locations back to tuple as they get imported as strings
-    df['location'] = df.location.apply(literal_eval)
+    if isinstance(df['location'].iloc[0], str):
+        df['location'] = df.location.apply(literal_eval)
 
     # Ignore mode choice for this example
     if 'mode' not in df.columns:
@@ -45,7 +46,8 @@ def prepare_indexed_data(df: pd.DataFrame, travel_times: dict) \
     df = df.infer_objects()
 
     # Convert locations back to tuple as they get imported as strings
-    df['location'] = df.location.apply(literal_eval)
+    if isinstance(df['location'].iloc[0], str):
+        df['location'] = df.location.apply(literal_eval)
 
     # Create groups and set first and last to dawn and dusk,
     # as dawn and dusk are allowed to be duplicated

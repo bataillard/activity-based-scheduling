@@ -121,7 +121,9 @@ def create_dicts(df, preferences=None, minutes=False):
         df['duration'] = (df.start_time.round()) * 60
 
     location = df.set_index('label')['location']
-    location = location.apply(lambda x: tuple(map(float, x[1:-1].split(',')))).to_dict()
+    if isinstance(df['location'].iloc[0], str):
+        location = location.apply(lambda x: tuple(map(float, x[1:-1].split(','))))
+    location = location.to_dict()
     # location = df.set_index('label')['loc_id'].to_dict()
     feas_start = df.set_index('label')['feasible_start'].to_dict()
     feas_end = df.set_index('label')['feasible_end'].to_dict()
