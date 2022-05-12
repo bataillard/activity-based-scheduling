@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Tuple, Union
 
+import joblib
 import pandas as pd
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import CpSolver, CpModel
@@ -47,16 +48,36 @@ INTERVAL_MODE = Model(interval.optimize_schedule, name_prefix='interval')
 
 
 def main():
-    compare(data_source=CLAIRE_DATA)
-    compare(data_source=EXAMPLE_DATA)
+    # Compare basic examples first
+    # compare(data_source=EXAMPLE_DATA)
+    # compare(data_source=CLAIRE_DATA)
+
+    # Compare runtimes on random data with increasing number of activities
+    seed = 42
+    min_activities, max_activities = 2, 6
+
+    for n_activities in range(min_activities, max_activities):
+        data_name = f'random_{n_activities}'
+        activities, travel_times = load_random(n_activities, seed)
+
+        # Create output directory
+        output_path = OUTPUT_PATH / data_name
+        shutil.rmtree(output_path, ignore_errors=True)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Save generated activities and travel times for future reference
+        activities.to_csv(output_path / 'data_activities.csv')
+        joblib.dump(travel_times, output_path / 'data_travel_times.joblib')
+
+        compare(data_source=DataSource(lambda: (activities, travel_times), data_name), runtime_summary=False)
 
 
-def compare(data_source: DataSource, n_iter=2, runtime_summary=True):
+def compare(data_source: DataSource, n_iter=100, runtime_summary=True):
     print("*" * 100)
     print(f"* Starting comparison for data '{data_source.name_prefix}'".upper())
     print("*" * 100)
 
-    results_path = data_source.output_path / (data_source.name_prefix + '.csv')
+    results_path = data_source.output_path / ('results_' + data_source.name_prefix + '.csv')
 
     basic_times = run_cp(data_source, BASIC_MODEL, n_iter, verbose=10)
     indexed_times = run_cp(data_source, INDEXED_MODEL, n_iter, verbose=10, )
@@ -126,7 +147,7 @@ def run_cp(data_source: DataSource, optimizer: Model, n_iter: int, verbose: Unio
 
 
 def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = False,
-             print_schedules=False, export_to_csv=False):
+             print_schedules=True, export_to_csv=True):
     activities, travel_times = data_source.load_data()
 
     # Create output folders and empty them if necessary
