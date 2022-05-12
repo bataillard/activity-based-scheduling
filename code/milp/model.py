@@ -89,8 +89,8 @@ def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic
 
     for a in keys:
         ct_sequence = m.add_constraints(z[a, b] + z[b, a] <= 1 for b in keys if b != a)
-        ct_sequence_dawn = m.add_constraint(z[a, 'dawn'] == 0)
-        ct_sequence_dusk = m.add_constraint(z['dusk', a] == 0)
+        ct_sequence_dawn = m.add_constraints(z[a, dawn] == 0 for dawn in keys if group[dawn] == 'dawn')
+        ct_sequence_dusk = m.add_constraints(z[dusk, a] == 0 for dusk in keys if group[dusk] == 'dusk')
         ct_sameact = m.add_constraint(z[a, a] == 0)
         ct_times_inf = m.add_constraints(x[a] + d[a] + tt[a] - x[b] >= (z[a, b] - 1) * period for b in keys)
         ct_times_sup = m.add_constraints(x[a] + d[a] + tt[a] - x[b] <= (1 - z[a, b]) * period for b in keys)
@@ -114,14 +114,14 @@ def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic
         # if not mtmc: #no duplicates in MTMC !
         ct_duplicates = m.add_constraint(m.sum(w[b] for b in keys if group[b] == group[a]) <= 1)
 
-        if a != 'dawn':
+        if group[a] != 'dawn':
             ct_predecessor = m.add_constraint(m.sum(z[b, a] for b in keys if b != a) == w[a])
-        if a != 'dusk':
+        if group[a] != 'dusk':
             ct_successor = m.add_constraint(m.sum(z[a, b] for b in keys if b != a) == w[a])
 
     ct_period = m.add_constraint(m.sum(d[a] + tt[a] for a in keys) == period)
-    ct_startdawn = m.add_constraint(x['dawn'] == 0)
-    ct_enddusk = m.add_constraint(x['dusk'] + d['dusk'] == period)
+    ct_startdawn = m.add_constraints(x[dawn] == 0 for dawn in keys if group[dawn] == 'dawn')
+    ct_enddusk = m.add_constraints(x[dusk] + d[dusk] == period for dusk in keys if group[dusk] == 'dusk')
 
     # objective function
     m.maximize(m.sum(w[a] * ((p_st_e[flex_early[a]]) * m.max(des_start[a] - x[a], 0)
