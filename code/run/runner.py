@@ -1,11 +1,9 @@
 import math
-import pickle
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Tuple, Union
 
-import joblib
 import pandas as pd
 from ortools.sat.python import cp_model
 from ortools.sat.python.cp_model import CpSolver, CpModel
@@ -15,6 +13,7 @@ import cp.model_indexed as indexed
 import cp.model_interval as interval
 import milp.model as milp
 from cp.schedules import plot_schedule
+from run.generation import load_example, load_claire
 from milp.data_utils import plot_schedule as milp_plot_schedule
 
 DataLoadFunction = Callable[[], Tuple[pd.DataFrame, dict]]
@@ -33,7 +32,6 @@ class Model:
     name_prefix: str
 
 
-RES_PATH = Path("../res/")
 OUTPUT_PATH = Path("../out/")
 SCHEDULE_OUTPUT_PATH = OUTPUT_PATH / "schedules"
 IMAGE_OUTPUT_PATH = OUTPUT_PATH / "img"
@@ -151,21 +149,6 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
             schedule.to_csv(path)
 
     return pd.Series(data=wall_times, index=range(n_iter), name='milp')
-
-
-def load_example() -> (pd.DataFrame, dict):
-    activities_df = pd.read_csv(RES_PATH / f'example_activities.csv')
-    tt_driving = pickle.load(open(RES_PATH / f'example_travel_times.pickle', "rb"))
-    travel_times_by_mode = {'driving': tt_driving}
-
-    return activities_df, travel_times_by_mode
-
-
-def load_claire() -> (pd.DataFrame, dict):
-    activities_df = pd.read_csv(RES_PATH / "claire_activities.csv")
-    _, travel_times_by_mode, _ = joblib.load(RES_PATH / 'claire_preprocessed.joblib', 'r')
-
-    return activities_df, travel_times_by_mode
 
 
 if __name__ == '__main__':
