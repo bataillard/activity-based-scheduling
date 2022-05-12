@@ -13,8 +13,10 @@ import cp.model_indexed as indexed
 import cp.model_interval as interval
 import milp.model as milp
 from cp.schedules import plot_schedule
-from run.generation import load_example, load_claire
 from milp.data_utils import plot_schedule as milp_plot_schedule
+from run.generation import load_example, load_claire, load_random
+
+OUTPUT_PATH = Path("../out/")
 
 DataLoadFunction = Callable[[], Tuple[pd.DataFrame, dict]]
 OptimizerFunction = Callable[[pd.DataFrame, dict], Tuple[int, CpSolver, CpModel, pd.DataFrame]]
@@ -25,6 +27,10 @@ class DataSource:
     load_data: DataLoadFunction
     name_prefix: str
 
+    @property
+    def output_path(self):
+        return OUTPUT_PATH / self.name_prefix
+
 
 @dataclass
 class Model:
@@ -32,35 +38,48 @@ class Model:
     name_prefix: str
 
 
-OUTPUT_PATH = Path("../out/")
-SCHEDULE_OUTPUT_PATH = OUTPUT_PATH / "schedules"
-IMAGE_OUTPUT_PATH = OUTPUT_PATH / "img"
+EXAMPLE_DATA = DataSource(load_example, 'example')
+CLAIRE_DATA = DataSource(load_claire, 'claire')
 
 BASIC_MODEL = Model(basic.optimize_schedule, name_prefix='basic')
 INDEXED_MODEL = Model(indexed.optimize_schedule, name_prefix='indexed')
 INTERVAL_MODE = Model(interval.optimize_schedule, name_prefix='interval')
 
 
-def main(data_source: DataSource, n_iter=100):
-    basic_times = run_cp(data_source, BASIC_MODEL, n_iter, verbose=10, print_schedules=True, export_to_csv=True)
-    indexed_times = run_cp(data_source, INDEXED_MODEL, n_iter, verbose=10, print_schedules=True, export_to_csv=True)
-    interval_times = run_cp(data_source, INTERVAL_MODE, n_iter, verbose=10, print_schedules=True, export_to_csv=True)
-    milp_times = run_milp(data_source, n_iter, verbose=10, print_schedules=True, export_to_csv=True)
+def main():
+    compare(data_source=CLAIRE_DATA)
+    compare(data_source=EXAMPLE_DATA)
 
-    times = [s.describe() for s in [basic_times, indexed_times, interval_times, milp_times]]
+
+def compare(data_source: DataSource, n_iter=2, runtime_summary=True):
+    print("*" * 100)
+    print(f"* Starting comparison for data '{data_source.name_prefix}'".upper())
+    print("*" * 100)
+
+    results_path = data_source.output_path / (data_source.name_prefix + '.csv')
+
+    basic_times = run_cp(data_source, BASIC_MODEL, n_iter, verbose=10)
+    indexed_times = run_cp(data_source, INDEXED_MODEL, n_iter, verbose=10, )
+    interval_times = run_cp(data_source, INTERVAL_MODE, n_iter, verbose=10, )
+    milp_times = run_milp(data_source, n_iter, verbose=10, )
+
+    times = [s for s in [basic_times, indexed_times, interval_times, milp_times]]
+    if runtime_summary:
+        times = [s.describe() for s in times]
+
     times = pd.concat(times, axis=1).T
+    times.to_csv(results_path)
 
-    times.to_csv(OUTPUT_PATH / 'results.csv')
-    print(times)
+    print(f"Comparison for '{data_source.name_prefix}' finished. Results saved to '{results_path}'")
 
 
-def run_cp(data_source: DataSource, optimizer: Model, n_iter: int,
-           verbose: Union[bool, int] = False, print_schedules=False, export_to_csv=False):
+def run_cp(data_source: DataSource, optimizer: Model, n_iter: int, verbose: Union[bool, int] = False,
+           print_schedules=True, export_to_csv=True):
     activities, travel_times = data_source.load_data()
 
     # Create output folders and empty them if necessary
-    print_path = IMAGE_OUTPUT_PATH / optimizer.name_prefix
-    csv_path = SCHEDULE_OUTPUT_PATH / optimizer.name_prefix
+    print_path = data_source.output_path / 'img' / optimizer.name_prefix
+    csv_path = data_source.output_path / 'schedules' / optimizer.name_prefix
 
     shutil.rmtree(print_path, ignore_errors=True)
     shutil.rmtree(csv_path, ignore_errors=True)
@@ -72,7 +91,7 @@ def run_cp(data_source: DataSource, optimizer: Model, n_iter: int,
     if verbose:
         print("*" * 30)
         print(f'* Running model: {optimizer.name_prefix}')
-        print("*" * 30)
+        print("*" * 30 + '\n')
 
     wall_times = []
     for i in range(n_iter):
@@ -111,8 +130,8 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
     activities, travel_times = data_source.load_data()
 
     # Create output folders and empty them if necessary
-    print_path = IMAGE_OUTPUT_PATH / 'milp'
-    csv_path = SCHEDULE_OUTPUT_PATH / 'milp'
+    print_path = data_source.output_path / 'img' / 'milp'
+    csv_path = data_source.output_path / 'schedules' / 'milp'
 
     shutil.rmtree(print_path, ignore_errors=True)
     shutil.rmtree(csv_path, ignore_errors=True)
@@ -123,7 +142,7 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
     if verbose:
         print("*" * 30)
         print('* Running model: milp')
-        print("*" * 30)
+        print("*" * 30 + '\n')
 
     wall_times = []
     for i in range(n_iter):
@@ -134,7 +153,7 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
         if verbose and i % console_interval == 0:
             print(f"= Schedule milp {i}/{n_iter} ================")
             print(schedule)
-            print("======================================\n")
+            print(f"======================================\n")
 
         # Export results of this iteration
         n_zeroes = math.ceil(math.log10(n_iter))
@@ -152,5 +171,4 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
 
 
 if __name__ == '__main__':
-    main(data_source=DataSource(load_example, 'example'))
-    main(data_source=DataSource(load_claire, 'claire'))
+    main()
