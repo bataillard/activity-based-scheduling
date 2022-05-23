@@ -13,6 +13,7 @@ import cp.model_basic as basic
 import cp.model_indexed as indexed
 import cp.model_interval as interval
 import milp.model as milp
+from cp.parameters import compute_piecewise_errors, compute_stepwise_errors, compute_no_activity_errors
 from cp.schedules import plot_schedule
 from generation import load_example, load_claire, load_random
 from milp.data_utils import plot_schedule as milp_plot_schedule
@@ -42,15 +43,27 @@ class Model:
 EXAMPLE_DATA = DataSource(load_example, 'example')
 CLAIRE_DATA = DataSource(load_claire, 'claire')
 
-BASIC_MODEL = Model(basic.optimize_schedule, name_prefix='basic')
-INDEXED_MODEL = Model(indexed.optimize_schedule, name_prefix='indexed')
-INTERVAL_MODE = Model(interval.optimize_schedule, name_prefix='interval')
+pw = lambda model: lambda *args: model.optimize_schedule(*args, error_function=compute_piecewise_errors)
+sw = lambda model: lambda *args: model.optimize_schedule(*args, error_function=compute_stepwise_errors)
+ne = lambda model: lambda *args: model.optimize_schedule(*args, error_function=compute_no_activity_errors)
+
+BASIC_MODEL_PW = Model(pw(basic), name_prefix='basic_piecewise')
+INDEXED_MODEL_PW = Model(pw(indexed), name_prefix='indexed_piecewise')
+INTERVAL_MODE_PW = Model(pw(interval), name_prefix='interval_piecewise')
+
+BASIC_MODEL_SW = Model(sw(basic), name_prefix='basic_stepwise')
+INDEXED_MODEL_SW = Model(sw(basic), name_prefix='indexed_stepwise')
+INTERVAL_MODE_SW = Model(sw(basic), name_prefix='interval_stepwise')
+
+BASIC_MODEL_NE = Model(ne(basic), name_prefix='basic_none')
+INDEXED_MODEL_NE = Model(ne(basic), name_prefix='indexed_none')
+INTERVAL_MODE_NE = Model(ne(basic), name_prefix='interval_none')
 
 
 def main():
     # Compare basic examples first
-    # compare(data_source=EXAMPLE_DATA)
-    # compare(data_source=CLAIRE_DATA)
+    compare(data_source=EXAMPLE_DATA)
+    compare(data_source=CLAIRE_DATA)
 
     # Compare runtimes on random data with increasing number of activities
     seed = 42
@@ -72,19 +85,35 @@ def main():
         compare(data_source=DataSource(lambda: (activities, travel_times), data_name), runtime_summary=False)
 
 
-def compare(data_source: DataSource, n_iter=100, runtime_summary=True):
+def compare(data_source: DataSource, n_iter=2, runtime_summary=True):
     print("*" * 100)
     print(f"* Starting comparison for data '{data_source.name_prefix}'".upper())
     print("*" * 100)
 
     results_path = data_source.output_path / ('results_' + data_source.name_prefix + '.csv')
 
-    basic_times = run_cp(data_source, BASIC_MODEL, n_iter, verbose=10)
-    indexed_times = run_cp(data_source, INDEXED_MODEL, n_iter, verbose=10, )
-    interval_times = run_cp(data_source, INTERVAL_MODE, n_iter, verbose=10, )
-    milp_times = run_milp(data_source, n_iter, verbose=10, )
+    # Piecewise models
+    basic_pw_times = run_cp(data_source, BASIC_MODEL_PW, n_iter, verbose=10)
+    indexed_pw_times = run_cp(data_source, INDEXED_MODEL_PW, n_iter, verbose=10, )
+    interval_pw_times = run_cp(data_source, INTERVAL_MODE_PW, n_iter, verbose=10, )
+    milp_pw_times = run_milp(data_source, n_iter, verbose=10, error_function_type='piecewise')
 
-    times = [s for s in [basic_times, indexed_times, interval_times, milp_times]]
+    # Stepwise models
+    basic_sw_times = run_cp(data_source, BASIC_MODEL_SW, n_iter, verbose=10)
+    indexed_sw_times = run_cp(data_source, INDEXED_MODEL_SW, n_iter, verbose=10, )
+    interval_sw_times = run_cp(data_source, INTERVAL_MODE_SW, n_iter, verbose=10, )
+    milp_sw_times = run_milp(data_source, n_iter, verbose=10, error_function_type='stepwise')
+
+    # No activity error models
+    basic_ne_times = run_cp(data_source, BASIC_MODEL_NE, n_iter, verbose=10)
+    indexed_ne_times = run_cp(data_source, INDEXED_MODEL_NE, n_iter, verbose=10, )
+    interval_ne_times = run_cp(data_source, INTERVAL_MODE_NE, n_iter, verbose=10, )
+    milp_ne_times = run_milp(data_source, n_iter, verbose=10, error_function_type='none')
+
+
+    times = [s for s in [basic_pw_times, indexed_pw_times, interval_pw_times, milp_pw_times,
+                         basic_sw_times, indexed_sw_times, interval_sw_times, milp_sw_times,
+                         basic_ne_times, indexed_ne_times, interval_ne_times, milp_ne_times]]
     if runtime_summary:
         times = [s.describe() for s in times]
 
@@ -147,12 +176,14 @@ def run_cp(data_source: DataSource, optimizer: Model, n_iter: int, verbose: Unio
 
 
 def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = False,
-             print_schedules=True, export_to_csv=True):
+             print_schedules=True, export_to_csv=True, error_function_type='piecewise'):
     activities, travel_times = data_source.load_data()
 
+    model_name = f'milp_{error_function_type}'
+
     # Create output folders and empty them if necessary
-    print_path = data_source.output_path / 'img' / 'milp'
-    csv_path = data_source.output_path / 'schedules' / 'milp'
+    print_path = data_source.output_path / 'img' / model_name
+    csv_path = data_source.output_path / 'schedules' / model_name
 
     shutil.rmtree(print_path, ignore_errors=True)
     shutil.rmtree(csv_path, ignore_errors=True)
@@ -162,23 +193,23 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
 
     if verbose:
         print("*" * 30)
-        print('* Running model: milp')
+        print(f'* Running model: {model_name}')
         print("*" * 30 + '\n')
 
     wall_times = []
     for i in range(n_iter):
-        schedule, wall_time = milp.optimize_schedule(activities, travel_times)
+        schedule, wall_time = milp.optimize_schedule(activities, travel_times, error_function_type=error_function_type)
         wall_times.append(wall_time)
 
         console_interval = verbose if isinstance(verbose, int) else 10
         if verbose and i % console_interval == 0:
-            print(f"= Schedule milp {i}/{n_iter} ================")
+            print(f"= Schedule {model_name} {i}/{n_iter} ================")
             print(schedule)
             print(f"======================================\n")
 
         # Export results of this iteration
         n_zeroes = math.ceil(math.log10(n_iter))
-        filename = 'milp_' + str(i).rjust(n_zeroes, '0')
+        filename = model_name + str(i).rjust(n_zeroes, '0')
 
         if print_schedules:
             path = print_path / (filename + '.png')
@@ -188,7 +219,7 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
             path = csv_path / (filename + '.csv')
             schedule.to_csv(path)
 
-    return pd.Series(data=wall_times, index=range(n_iter), name='milp')
+    return pd.Series(data=wall_times, index=range(n_iter), name=model_name)
 
 
 if __name__ == '__main__':
