@@ -1,16 +1,16 @@
-import numpy as np
 import pandas as pd
 from ortools.sat.python import cp_model
 
 from cp.parameters import extract_penalties, extract_times, extract_error_terms, extract_flexibilities, \
-    extract_indexed_activities, prepare_indexed_data, compute_travel_time_index
+    extract_indexed_activities, prepare_indexed_data, compute_travel_time_index, compute_piecewise_errors
 from cp.schedules import model_indexed_to_schedule
-from cp.utils import MAX_TIME, stepwise
+from cp.utils import MAX_TIME
 
 MIN_DURATION = 1
 
 
-def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None, deterministic=False):
+def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None, deterministic=False,
+                      error_function=compute_piecewise_errors):
     # ==========================================
     # = Model Parameters and Setup             =
     # ==========================================
@@ -150,22 +150,7 @@ def optimize_schedule(df: pd.DataFrame, travel_times_dict: dict, parameters=None
     # ==========================================
 
     activity_penalties = create_activity_penalties(df, model, activities, w, x, d, t, parameters)
-
-    error_w_steps = {a: stepwise(model, w[a], 0, [(k, error_w[k]) for k in [0, 1]]) for a in activities}
-    error_x_steps = {a: stepwise(model, x[a], 0, [(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))])
-                     for a in activities}
-    error_d_steps = {a: stepwise(model, d[a], 0, [(a, error_d[b]) for a, b in zip([0, 1, 3, 8, 12, 16], np.arange(6))])
-                     for a in activities}
-    error_z_steps = {(a, b): stepwise(model, z[(a, b)], 0, [(k, error_z[k]) for k in [0, 1]])
-                     for b in activities for a in activities}
-
-    error_utility = {
-        a: (sum(step.constraint for step in error_w_steps[a])
-            + sum(step.constraint for step in error_x_steps[a])
-            + sum(step.constraint for step in error_d_steps[a])
-            + sum(sum(step.constraint for step in error_z_steps[(a, b)]) for b in activities))
-        for a in activities
-    }
+    error_utility = error_function(model, activities, w, x, d, z, error_w, error_x, error_d, error_z)
 
     model.Maximize(sum(activity_penalties[a] + error_utility[a] for a in activities) + ev_error)
 

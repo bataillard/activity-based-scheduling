@@ -1,12 +1,18 @@
 import copy
 from ast import literal_eval
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Callable
 
 import numpy as np
 import pandas as pd
+from ortools.sat.python.cp_model import CpModel, LinearExpr, IntVar
 
 from cp.utils import hours_to_discrete_time_step, scale_to_discrete_time_step, scale_to_time_step, \
-    hours_to_time_step, MAX_TIME, get_index_col
+    hours_to_time_step, MAX_TIME, get_index_col, piecewise, stepwise
+
+
+# ============================================================
+# Model parameters and inputs
+# ============================================================
 
 
 def prepare_data(df: pd.DataFrame, travel_times: dict):
@@ -187,3 +193,54 @@ def extract_indexed_activities(df: pd.DataFrame):
 
 def compute_travel_time_index(locations, m, la, lb):
     return (len(locations) ** 2) * m + len(locations) * la + lb
+
+
+# ============================================================
+# Error functions
+# ============================================================
+
+
+Point = Tuple[float, float]
+PointFunction = Callable[[IntVar, List[Point]], LinearExpr]
+
+
+def compute_point_function_errors(activities, w, x, d, z, error_w: np.array, error_x: np.array,
+                                  error_d: np.array, error_z: np.array, point_function: PointFunction) -> dict:
+    w_points = [(k, error_w[k]) for k in [0, 1]]
+    x_points = [(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))]
+    d_points = [(a, error_d[b]) for a, b in zip([0, 1, 3, 8, 12, 16], np.arange(6))]
+    z_points = [(k, error_z[k]) for k in [0, 1]]
+
+    error_w_constraints = {a: point_function(w[a], w_points) for a in activities}
+    error_x_constraints = {a: point_function(x[a], x_points) for a in activities}
+    error_d_constraints = {a: point_function(d[a], d_points) for a in activities}
+    error_z_constraints = {(a, b): point_function(z[(a, b)], z_points) for b in activities for a in activities}
+
+    error_utility = {
+        a: (error_w_constraints[a] + error_x_constraints[a] + error_d_constraints[a]
+            + sum(error_z_constraints[(a, b)] for b in activities))
+        for a in activities
+    }
+
+    return error_utility
+
+
+def compute_no_activity_errors(model: CpModel, activities, w, x, d, z, error_w: np.array, error_x: np.array,
+                               error_d: np.array, error_z: np.array) -> dict:
+    return {a: 0 for a in activities}
+
+
+def compute_stepwise_errors(model: CpModel, activities, w, x, d, z, error_w: np.array, error_x: np.array,
+                            error_d: np.array, error_z: np.array) -> dict:
+    def apply_stepwise(var: IntVar, points: List[Point]):
+        return stepwise(model, var, points)
+
+    return compute_point_function_errors(activities, w, x, d, z, error_w, error_x, error_d, error_z, apply_stepwise)
+
+
+def compute_piecewise_errors(model: CpModel, activities, w, x, d, z, error_w: np.array, error_x: np.array,
+                             error_d: np.array, error_z: np.array) -> dict:
+    def apply_piecewise(var: IntVar, points: List[Point]):
+        return piecewise(model, var, points)
+
+    return compute_point_function_errors(activities, w, x, d, z, error_w, error_x, error_d, error_z, apply_piecewise)
