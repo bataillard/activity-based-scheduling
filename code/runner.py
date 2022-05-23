@@ -14,8 +14,8 @@ import cp.model_indexed as indexed
 import cp.model_interval as interval
 import milp.model as milp
 from cp.schedules import plot_schedule
+from generation import load_example, load_claire, load_random
 from milp.data_utils import plot_schedule as milp_plot_schedule
-from run.generation import load_example, load_claire, load_random
 
 OUTPUT_PATH = Path("../out/")
 
