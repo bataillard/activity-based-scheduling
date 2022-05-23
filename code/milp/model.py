@@ -6,7 +6,8 @@ from docplex.mp.model import Model
 from milp.data_utils import cplex_to_df, create_dicts
 
 
-def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic=False):
+def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic=False,
+                      error_function_type='piecewise'):
     '''
     Optimize schedule using CPLEX solver, given timing preferences and travel time matrix.
     Can produce a graphical output if specified (by argument plot_every)
@@ -73,6 +74,7 @@ def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic
     tt = m.continuous_var_dict(keys, lb=0, name='tt')  # travel time
     # md = m.binary_var_matrix(keys, modes, name = 'md') #mode of transportation (availability)
     md_car = m.binary_var_dict(keys, name='md')  # mode of transportation (availability)
+
     # z_md = m.binary_var_cube(keys, keys, modes, name = 'z_md') #dummy variable to linearize product of z and md
 
     # piecewise error variables
@@ -80,10 +82,31 @@ def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic
     # error_z = m.piecewise(0, [(k,error_succession[k]) for k in [0,1]], 0)
     # error_x = m.piecewise(0, [(a, error_start[b]) for a,b in zip(np.arange(0, 24, 6), np.arange(4))], 0)
     # error_d = m.piecewise(0, [(a, error_duration[b]) for a,b in zip([0, 1, 3, 8, 12, 16], np.arange(6))], error_duration[-1])
-    error_w = m.piecewise(0, [(k, error_w[k]) for k in [0, 1]], 0)
-    error_z = m.piecewise(0, [(k, error_z[k]) for k in [0, 1]], 0)
-    error_x = m.piecewise(0, [(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))], 0)
-    error_d = m.piecewise(0, [(a, error_d[b]) for a, b in zip([0, 1, 3, 8, 12, 16], np.arange(6))], error_d[-1])
+
+    def to_function_points(points, function_type='piecewise'):
+        if function_type == 'none':
+            return [(0, 0)]
+        elif function_type == 'stepwise':
+            steps = [[(k0, e0), (k1, e0)] for (k0, e0), (k1, _) in zip(points, points[1:])]
+            flat_points = [point for step in steps for point in step]
+
+            return flat_points
+        elif function_type == 'piecewise':
+            return points
+        else:
+            raise AttributeError(f'Invalid function type {function_type}')
+
+    w_points = to_function_points([(k, error_w[k]) for k in [0, 1]], error_function_type)
+    z_points = to_function_points([(k, error_z[k]) for k in [0, 1]], error_function_type)
+    x_points = to_function_points([(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))],
+                                  error_function_type)
+    d_points = to_function_points([(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))],
+                                  error_function_type)
+
+    error_w = m.piecewise(0, w_points, 0)
+    error_z = m.piecewise(0, z_points, 0)
+    error_x = m.piecewise(0, x_points, 0)
+    error_d = m.piecewise(0, d_points, 0)
 
     # constraints
 
