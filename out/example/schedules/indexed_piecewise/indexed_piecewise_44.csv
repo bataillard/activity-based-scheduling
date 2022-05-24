@@ -1,0 +1,5 @@
+,act_id,label,start_time,end_time,duration,location,mode
+0,1.0,dawn,0,138,138,"(46.5356, 6.60019)",driving
+1,2.0,work,182,239,57,"(46.5355, 6.59967)",driving
+2,1.0,home,138,182,44,"(46.5356, 6.60019)",driving
+4,1.0,dusk,239,288,49,"(46.5356, 6.60019)",driving
