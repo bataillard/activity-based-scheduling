@@ -1,0 +1,21 @@
+,act_id,act_label,start_time,end_time,duration,feasible_start,feasible_end,flex_early,flex_late,flex_short,flex_long,label,location,loc_id,mode,group
+0,1,dusk,19.0,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (car),"(46.6131, 6.50688)",0,car,dusk
+1,1,dusk,19.0,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (bicycling),"(46.6131, 6.50688)",0,bicycling,dusk
+2,1,dusk,19.0,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (transit),"(46.6131, 6.50688)",0,transit,dusk
+3,1,dusk,19.0,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (walking),"(46.6131, 6.50688)",0,walking,dusk
+4,2,escort,9.338690355288994,18.492468639769022,6.413815517788306,1,20,R,R,R,R,escort @ 0 (car),"(46.6131, 6.50688)",0,car,escort
+5,2,escort,9.338690355288994,18.492468639769022,6.413815517788306,1,20,R,R,R,R,escort @ 0 (bicycling),"(46.6131, 6.50688)",0,bicycling,escort
+6,2,escort,9.338690355288994,18.492468639769022,6.413815517788306,1,20,R,R,R,R,escort @ 0 (transit),"(46.6131, 6.50688)",0,transit,escort
+7,2,escort,9.338690355288994,18.492468639769022,6.413815517788306,1,20,R,R,R,R,escort @ 0 (walking),"(46.6131, 6.50688)",0,walking,escort
+8,3,home,17.603087503164538,19.233453969714674,1.5182900613066108,14,22,M,R,M,M,home @ 2 (car),"(46.6149, 6.50523)",2,car,home
+9,3,home,17.603087503164538,19.233453969714674,1.5182900613066108,14,22,M,R,M,M,home @ 2 (bicycling),"(46.6149, 6.50523)",2,bicycling,home
+10,3,home,17.603087503164538,19.233453969714674,1.5182900613066108,14,22,M,R,M,M,home @ 2 (transit),"(46.6149, 6.50523)",2,transit,home
+11,3,home,17.603087503164538,19.233453969714674,1.5182900613066108,14,22,M,R,M,M,home @ 2 (walking),"(46.6149, 6.50523)",2,walking,home
+12,4,education,12.43667829612668,12.66407970988433,0.20544138138175638,8,16,R,R,M,F,education @ 1 (car),"(46.5032, 6.4116)",1,car,education
+13,4,education,12.43667829612668,12.66407970988433,0.20544138138175638,8,16,R,R,M,F,education @ 1 (bicycling),"(46.5032, 6.4116)",1,bicycling,education
+14,4,education,12.43667829612668,12.66407970988433,0.20544138138175638,8,16,R,R,M,F,education @ 1 (transit),"(46.5032, 6.4116)",1,transit,education
+15,4,education,12.43667829612668,12.66407970988433,0.20544138138175638,8,16,R,R,M,F,education @ 1 (walking),"(46.5032, 6.4116)",1,walking,education
+16,0,dawn,0.0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (car),"(46.6131, 6.50688)",0,car,dawn
+17,0,dawn,0.0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (bicycling),"(46.6131, 6.50688)",0,bicycling,dawn
+18,0,dawn,0.0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (transit),"(46.6131, 6.50688)",0,transit,dawn
+19,0,dawn,0.0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (walking),"(46.6131, 6.50688)",0,walking,dawn

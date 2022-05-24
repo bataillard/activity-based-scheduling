@@ -1,0 +1,9 @@
+,act_id,act_label,start_time,end_time,duration,feasible_start,feasible_end,flex_early,flex_late,flex_short,flex_long,label,location,loc_id,mode,group
+0,1,dusk,19,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (car),"(46.6131, 6.50688)",0,car,dusk
+1,1,dusk,19,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (bicycling),"(46.6131, 6.50688)",0,bicycling,dusk
+2,1,dusk,19,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (transit),"(46.6131, 6.50688)",0,transit,dusk
+3,1,dusk,19,24.0,5.0,0,24,F,M,F,F,dusk @ 0 (walking),"(46.6131, 6.50688)",0,walking,dusk
+4,0,dawn,0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (car),"(46.6131, 6.50688)",0,car,dawn
+5,0,dawn,0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (bicycling),"(46.6131, 6.50688)",0,bicycling,dawn
+6,0,dawn,0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (transit),"(46.6131, 6.50688)",0,transit,dawn
+7,0,dawn,0,9.5,9.5,0,24,F,M,F,F,dawn @ 0 (walking),"(46.6131, 6.50688)",0,walking,dawn
