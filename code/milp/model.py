@@ -100,7 +100,7 @@ def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic
     z_points = to_function_points([(k, error_z[k]) for k in [0, 1]], error_function_type)
     x_points = to_function_points([(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))],
                                   error_function_type)
-    d_points = to_function_points([(a, error_x[b]) for a, b in zip(np.arange(0, 24, 6), np.arange(4))],
+    d_points = to_function_points([(a, error_d[b]) for a,b in zip([0, 1, 3, 8, 12, 16], np.arange(6))],
                                   error_function_type)
 
     error_w = m.piecewise(0, w_points, 0)
