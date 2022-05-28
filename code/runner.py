@@ -67,9 +67,9 @@ def main():
 
     # Compare runtimes on random data with increasing number of activities
     seed = 42
-    min_activities, max_activities = 2, 6
+    min_activities, max_activities = 2, 5
 
-    for n_activities in range(min_activities, max_activities):
+    for n_activities in range(min_activities, max_activities + 1):
         data_name = f'random_{n_activities}'
         activities, travel_times = load_random(n_activities, seed)
 
@@ -85,7 +85,7 @@ def main():
         compare(data_source=DataSource(lambda: (activities, travel_times), data_name), runtime_summary=False)
 
 
-def compare(data_source: DataSource, n_iter=2, runtime_summary=True):
+def compare(data_source: DataSource, n_iter=100, runtime_summary=True):
     print("*" * 100)
     print(f"* Starting comparison for data '{data_source.name_prefix}'".upper())
     print("*" * 100)
@@ -109,7 +109,6 @@ def compare(data_source: DataSource, n_iter=2, runtime_summary=True):
     indexed_ne_times = run_cp(data_source, INDEXED_MODEL_NE, n_iter, verbose=10, )
     interval_ne_times = run_cp(data_source, INTERVAL_MODE_NE, n_iter, verbose=10, )
     milp_ne_times = run_milp(data_source, n_iter, verbose=10, error_function_type='none')
-
 
     times = [s for s in [basic_pw_times, indexed_pw_times, interval_pw_times, milp_pw_times,
                          basic_sw_times, indexed_sw_times, interval_sw_times, milp_sw_times,
@@ -209,7 +208,7 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
 
         # Export results of this iteration
         n_zeroes = math.ceil(math.log10(n_iter))
-        filename = model_name + str(i).rjust(n_zeroes, '0')
+        filename = model_name + "_" + str(i).rjust(n_zeroes, '0')
 
         if print_schedules:
             path = print_path / (filename + '.png')
