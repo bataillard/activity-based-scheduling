@@ -90,36 +90,45 @@ def compare(data_source: DataSource, n_iter=100, runtime_summary=True):
     print(f"* Starting comparison for data '{data_source.name_prefix}'".upper())
     print("*" * 100)
 
-    results_path = data_source.output_path / ('results_' + data_source.name_prefix + '.csv')
+    runtimes_path = data_source.output_path / ('results_runtimes_' + data_source.name_prefix + '.csv')
+    objectives_path = data_source.output_path / ('results_objectives_' + data_source.name_prefix + '.csv')
 
     # Piecewise models
-    basic_pw_times = run_cp(data_source, BASIC_MODEL_PW, n_iter, verbose=10)
-    indexed_pw_times = run_cp(data_source, INDEXED_MODEL_PW, n_iter, verbose=10, )
-    interval_pw_times = run_cp(data_source, INTERVAL_MODE_PW, n_iter, verbose=10, )
-    milp_pw_times = run_milp(data_source, n_iter, verbose=10, error_function_type='piecewise')
+    basic_pw_results = run_cp(data_source, BASIC_MODEL_PW, n_iter, verbose=10)
+    indexed_pw_results = run_cp(data_source, INDEXED_MODEL_PW, n_iter, verbose=10, )
+    interval_pw_results = run_cp(data_source, INTERVAL_MODE_PW, n_iter, verbose=10, )
+    milp_pw_results = run_milp(data_source, n_iter, verbose=10, error_function_type='piecewise')
 
     # Stepwise models
-    basic_sw_times = run_cp(data_source, BASIC_MODEL_SW, n_iter, verbose=10)
-    indexed_sw_times = run_cp(data_source, INDEXED_MODEL_SW, n_iter, verbose=10, )
-    interval_sw_times = run_cp(data_source, INTERVAL_MODE_SW, n_iter, verbose=10, )
-    milp_sw_times = run_milp(data_source, n_iter, verbose=10, error_function_type='stepwise')
+    basic_sw_results = run_cp(data_source, BASIC_MODEL_SW, n_iter, verbose=10)
+    indexed_sw_results = run_cp(data_source, INDEXED_MODEL_SW, n_iter, verbose=10, )
+    interval_sw_results = run_cp(data_source, INTERVAL_MODE_SW, n_iter, verbose=10, )
+    milp_sw_results = run_milp(data_source, n_iter, verbose=10, error_function_type='stepwise')
 
     # No activity error models
-    basic_ne_times = run_cp(data_source, BASIC_MODEL_NE, n_iter, verbose=10)
-    indexed_ne_times = run_cp(data_source, INDEXED_MODEL_NE, n_iter, verbose=10, )
-    interval_ne_times = run_cp(data_source, INTERVAL_MODE_NE, n_iter, verbose=10, )
-    milp_ne_times = run_milp(data_source, n_iter, verbose=10, error_function_type='none')
+    basic_ne_results = run_cp(data_source, BASIC_MODEL_NE, n_iter, verbose=10)
+    indexed_ne_results = run_cp(data_source, INDEXED_MODEL_NE, n_iter, verbose=10, )
+    interval_ne_results = run_cp(data_source, INTERVAL_MODE_NE, n_iter, verbose=10, )
+    milp_ne_results = run_milp(data_source, n_iter, verbose=10, error_function_type='none')
 
-    times = [s for s in [basic_pw_times, indexed_pw_times, interval_pw_times, milp_pw_times,
-                         basic_sw_times, indexed_sw_times, interval_sw_times, milp_sw_times,
-                         basic_ne_times, indexed_ne_times, interval_ne_times, milp_ne_times]]
+    results = [basic_pw_results, indexed_pw_results, interval_pw_results, milp_pw_results,
+               basic_sw_results, indexed_sw_results, interval_sw_results, milp_sw_results,
+               basic_ne_results, indexed_ne_results, interval_ne_results, milp_ne_results]
+
+    times = [res[0] for res in results]
+    objectives = [res[1] for res in results]
+
     if runtime_summary:
         times = [s.describe() for s in times]
+        objectives = [s.describe() for s in objectives]
 
     times = pd.concat(times, axis=1).T
-    times.to_csv(results_path)
+    times.to_csv(runtimes_path)
 
-    print(f"Comparison for '{data_source.name_prefix}' finished. Results saved to '{results_path}'")
+    objectives = pd.concat(objectives, axis=1).T
+    objectives.to_csv(objectives_path)
+
+    print(f"Comparison for '{data_source.name_prefix}' finished. Results saved to '{runtimes_path}'")
 
 
 def run_cp(data_source: DataSource, optimizer: Model, n_iter: int, verbose: Union[bool, int] = False,
@@ -143,11 +152,13 @@ def run_cp(data_source: DataSource, optimizer: Model, n_iter: int, verbose: Unio
         print("*" * 30 + '\n')
 
     wall_times = []
+    solver_values = []
     for i in range(n_iter):
 
         # Run solver
         status, solver, model, schedule = optimizer.optimize_schedule(activities, travel_times)
         wall_times.append(solver.WallTime())
+        solver_values.append(solver.ObjectiveValue())
 
         if status != cp_model.OPTIMAL and status != cp_model.FEASIBLE:
             raise Exception(f'Model is {solver.StatusName(status)}')
@@ -171,7 +182,8 @@ def run_cp(data_source: DataSource, optimizer: Model, n_iter: int, verbose: Unio
             path = csv_path / (filename + '.csv')
             schedule.to_csv(path)
 
-    return pd.Series(data=wall_times, index=range(n_iter), name=optimizer.name_prefix)
+    return [pd.Series(data=wall_times, index=range(n_iter), name=optimizer.name_prefix),
+            pd.Series(data=solver_values, index=range(n_iter), name=optimizer.name_prefix)]
 
 
 def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = False,
@@ -196,9 +208,12 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
         print("*" * 30 + '\n')
 
     wall_times = []
+    solver_values = []
     for i in range(n_iter):
-        schedule, wall_time = milp.optimize_schedule(activities, travel_times, error_function_type=error_function_type)
+        schedule, wall_time, solver_value = milp.optimize_schedule(activities, travel_times,
+                                                                   error_function_type=error_function_type)
         wall_times.append(wall_time)
+        solver_values.append(solver_value)
 
         console_interval = verbose if isinstance(verbose, int) else 10
         if verbose and i % console_interval == 0:
@@ -218,7 +233,8 @@ def run_milp(data_source: DataSource, n_iter: int, verbose: Union[bool, int] = F
             path = csv_path / (filename + '.csv')
             schedule.to_csv(path)
 
-    return pd.Series(data=wall_times, index=range(n_iter), name=model_name)
+    return [pd.Series(data=wall_times, index=range(n_iter), name=model_name),
+            pd.Series(data=solver_values, index=range(n_iter), name=model_name)]
 
 
 if __name__ == '__main__':

@@ -179,4 +179,4 @@ def optimize_schedule(df=None, travel_times=None, parameters=None, deterministic
 
     solution_df = cplex_to_df(w, x, d, tt, md_car, mode, keys, act_id, location)  # transform into pandas dataframe
 
-    return solution_df, end_time - start_time
+    return solution_df, end_time - start_time, solution_value
