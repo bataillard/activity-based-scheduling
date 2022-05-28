@@ -111,7 +111,7 @@ def duplicate_activities(activities):
         loc_ids = activity.pop('loc_ids')
 
         for location, loc_id in zip(locations, loc_ids):
-            for mode in ['car', 'bicycling', 'transit', 'walking']:
+            for mode in ['driving', 'bicycling', 'transit', 'walking']:
                 duplicate = activity.copy()
 
                 act_label = duplicate['act_label']
@@ -148,4 +148,3 @@ def generate_travel_times(activities: pd.DataFrame, rng: np.random.Generator) ->
             travel_times[mode][destination][origin] = time
 
     return travel_times
-
