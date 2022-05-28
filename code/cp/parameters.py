@@ -176,7 +176,7 @@ def extract_activities(df: pd.DataFrame):
     group = df.set_index(idx_col)['group'].to_dict() if 'group' in df.columns else None
     mode = df.set_index(idx_col)['mode'].to_dict() if 'mode' in df.columns else None
     act_id = df.set_index(idx_col)['act_id'].to_dict()
-    is_home = (df.set_index(idx_col)['act_label'] == 'home').to_dict()
+    is_home = (df.set_index(idx_col)['act_label'].isin(['home', 'dusk', 'dawn'])).to_dict()
 
     return activities, location, group, mode, act_id, is_home
 
@@ -186,7 +186,7 @@ def extract_indexed_activities(df: pd.DataFrame):
 
     activities = df[get_index_col(idx_col)].unique().tolist()
     act_ids = df.groupby(idx_col)['act_id'].first()
-    is_home = (df.groupby(idx_col)['act_label'].first() == 'home')
+    is_home = df.groupby(idx_col)['act_label'].first().isin(['home', 'dusk', 'dawn'])
 
     return activities, act_ids.to_dict(), is_home.to_dict()
 
