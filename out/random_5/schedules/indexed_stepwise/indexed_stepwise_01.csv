@@ -1,4 +1,4 @@
 ,act_id,label,start_time,end_time,duration,location,mode
 3,1,dusk @ 0 (walking),188,288,100,"(46.6131, 6.50688)",walking
-4,2,escort @ 0 (car),112,188,76,"(46.6131, 6.50688)",car
-16,0,dawn @ 0 (car),0,112,112,"(46.6131, 6.50688)",car
+4,2,escort @ 0 (driving),112,188,76,"(46.6131, 6.50688)",driving
+16,0,dawn @ 0 (driving),0,112,112,"(46.6131, 6.50688)",driving

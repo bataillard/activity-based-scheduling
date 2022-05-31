@@ -1,4 +1,4 @@
 ,act_id,label,start_time,end_time,duration,location,mode
 0,1,dusk,188,288,100,"(46.6131, 6.50688)",bicycling
-1,2,escort,112,188,76,"(46.6131, 6.50688)",bicycling
-4,0,dawn,0,112,112,"(46.6131, 6.50688)",transit
+1,2,escort,112,188,76,"(46.6131, 6.50688)",driving
+4,0,dawn,0,112,112,"(46.6131, 6.50688)",driving

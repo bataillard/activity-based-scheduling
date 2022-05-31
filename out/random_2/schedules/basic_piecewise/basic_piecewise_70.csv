@@ -1,3 +1,3 @@
 ,act_id,label,start_time,end_time,duration,location,mode
-3,1,dusk @ 0 (walking),115,288,173,"(46.6131, 6.50688)",walking
-7,0,dawn @ 0 (walking),0,115,115,"(46.6131, 6.50688)",walking
+3,1,dusk @ 0 (walking),114,288,174,"(46.6131, 6.50688)",walking
+7,0,dawn @ 0 (walking),0,114,114,"(46.6131, 6.50688)",walking

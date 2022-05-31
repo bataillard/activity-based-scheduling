@@ -1,3 +1,3 @@
 ,act_id,label,start_time,end_time,duration,location,mode
-0,1,dusk,152,288,136,"(46.6131, 6.50688)",bicycling
-1,0,dawn,0,152,152,"(46.6131, 6.50688)",bicycling
+0,1,dusk,114,288,174,"(46.6131, 6.50688)",bicycling
+1,0,dawn,0,114,114,"(46.6131, 6.50688)",bicycling

@@ -1,6 +1,6 @@
 ,act_id,label,start_time,end_time,duration,location,mode
 0,1.0,dawn,0,117,117,"(46.6149, 6.50523)",driving
-4,5.0,errands_services (car),117,121,4,"(46.6142, 6.50723)",driving
-5,4.0,shopping (car),124,172,48,"(46.5032, 6.4116)",driving
+4,5.0,errands_services (car),117,144,27,"(46.6142, 6.50723)",driving
+5,4.0,shopping (car),147,172,25,"(46.5032, 6.4116)",driving
 9,2.0,work (car),172,224,52,"(46.5032, 6.4116)",driving
 10,1.0,dusk,227,288,61,"(46.6149, 6.50523)",driving

@@ -1,5 +1,5 @@
 ,act_id,label,start_time,end_time,duration,location,mode
-0,1.0,dawn,0,114,114,"(46.6149, 6.50523)",driving
-3,4.0,shopping,117,172,55,"(46.5032, 6.4116)",driving
+0,1.0,dawn,0,145,145,"(46.6149, 6.50523)",driving
+3,4.0,shopping,148,172,24,"(46.5032, 6.4116)",driving
 5,2.0,work,172,224,52,"(46.5032, 6.4116)",driving
-6,1.0,dusk,227,288,61,"(46.6149, 6.50523)",driving
+6,1.0,dusk,227,288,61,"(46.6149, 6.50523)",bicycling

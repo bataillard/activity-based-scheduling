@@ -1,3 +1,0 @@
-,act_id,label,start_time,end_time,duration,location,mode,travel_time,car_avail
-0,1,dusk @ 0 (transit),18.999999999999986,24.0,5.000000000000014,"(46.6131, 6.50688)",transit,0,1.0
-1,0,dawn @ 0 (bicycling),0,18.999999999999986,18.999999999999986,"(46.6131, 6.50688)",bicycling,0,1.0

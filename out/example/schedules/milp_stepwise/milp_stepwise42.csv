@@ -1,4 +1,0 @@
-,act_id,label,start_time,end_time,duration,location,mode,travel_time,car_avail
-0,1.0,dawn,0,9.5,9.5,"(46.5356, 6.60019)",driving,0,1.0
-1,1.0,home,9.5,18.0,8.5,"(46.5356, 6.60019)",driving,0,1.0
-2,1.0,dusk,18.0,24.0,6.0,"(46.5356, 6.60019)",driving,0,1.0
