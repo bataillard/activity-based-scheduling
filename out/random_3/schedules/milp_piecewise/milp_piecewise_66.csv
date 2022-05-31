@@ -1,0 +1,4 @@
+,act_id,label,start_time,end_time,duration,location,mode,travel_time,car_avail
+0,1,dusk @ 0 (transit),15.7525058730773,24.0,8.2474941269227,"(46.6131, 6.50688)",transit,0,1.0
+1,2,escort @ 0 (transit),9.338690355288994,15.7525058730773,6.413815517788306,"(46.6131, 6.50688)",transit,0,1.0
+2,0,dawn @ 0 (driving),0,9.338690355288993,9.338690355288993,"(46.6131, 6.50688)",driving,0,1.0
