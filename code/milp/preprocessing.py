@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 def preprocess_data(source='MTMC', travel=False):
     if source == 'MTMC':
         key = open('../../SBB/private_key.bin', 'rb').read()
-        pwd = b'***REMOVED***=='
+        pwd = None # Fill here
 
         engine = create_engine(f'postgresql://pougala:{Fernet(key).decrypt(pwd).decode()}@transporvm1/mtmc')
         query = ("""SELECT "HHNR", "ETNR", f51300, f52900, rdist, ldist, e_dauer, f51100time, f51400time,
