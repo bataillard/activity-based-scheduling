@@ -165,7 +165,7 @@ def get_geosample(id, type='city', engine=None):
 
     if engine is None:
         key = open('../../SBB/private_key.bin', 'rb').read()
-        pwd = b'***REMOVED***=='
+        pwd = None # Fill here
         engine = create_engine(f'postgresql://pougala:{Fernet(key).decrypt(pwd).decode()}@transporvm1/mtmc')
 
     query = ("""SELECT "HHNR", "W_AGGLO2000", "W_KANTON", "W_REGION" FROM hh""")
@@ -196,7 +196,7 @@ def get_socioeco_sample(col, id, city=5586, engine=None):
 
     if engine is None:
         key = open('../../SBB/private_key.bin', 'rb').read()
-        pwd = b'***REMOVED***=='
+        pwd = None # Fill here
         engine = create_engine(f'postgresql://pougala:{Fernet(key).decrypt(pwd).decode()}@transporvm1/mtmc')
 
     query = (f"""SELECT hh."HHNR", hh."W_AGGLO2000", target_indiv.\"{col}\" FROM hh

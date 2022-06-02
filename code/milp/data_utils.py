@@ -234,7 +234,7 @@ def compute_tmat(df_hh, h, modes='all'):
     df_hh = dataframe containing the trip diary of the household
     h = id of the household
     '''
-    gmaps = googlemaps.Client(key="***REMOVED***")
+    gmaps = googlemaps.Client(key=None) # fill here
 
     if modes == "all":
         mode = ['walking', 'driving', 'bicycling', 'transit']

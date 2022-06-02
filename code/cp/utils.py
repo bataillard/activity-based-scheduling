@@ -28,6 +28,10 @@ def hours_to_time_step(hours: float, time_period=TIME_PERIOD) -> float:
     return (hours * 60) / time_period
 
 
+def time_step_to_hours(timestep, time_period=TIME_PERIOD) -> float:
+    return timestep * time_period / 60
+
+
 def stepwise(model: CpModel, x: IntVar, breaks_xy: List[Tuple[float, float]],
              pre_y=None, post_y=None) -> LinearExpr:
     breaks_xy = sorted(breaks_xy, key=lambda b: b[0])
