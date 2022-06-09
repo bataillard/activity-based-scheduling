@@ -1,4 +1,4 @@
-name: /home/luca/Coding/EPFL/CS-498_SemProj/env
+name: cp_abm_env
 channels:
   - defaults
 dependencies:
@@ -150,4 +150,4 @@ dependencies:
     - pymysql==1.0.2
     - requests==2.27.1
     - urllib3==1.26.8
-prefix: /home/luca/Coding/EPFL/CS-498_SemProj/env
+prefix: /home/luca/Coding/EPFL/CS-498_SemProj/cp_abm_env
