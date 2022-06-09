@@ -62,6 +62,7 @@ def plot_schedule(schedule: pd.DataFrame, path='cp_schedule.png'):
     plt.xlim([0, MAX_TIME])
     plt.ylim([-1, 2])
     plt.xlabel('Time [h]')
+    plt.rcParams['axes.facecolor'] = 'white'
 
     plt.savefig(path)
     plt.close(fig)
